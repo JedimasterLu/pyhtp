@@ -1,3 +1,5 @@
 /model_training
 
 /data
+
+__pycache__/

@@ -15,10 +15,10 @@ from scipy.signal import find_peaks
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 import os
 import matplotlib.pyplot as plt
-import src.funda_XRD as fb
+import funda_XRD as fb
 
 # 指定包含.xy文件的目录
-directory = "SbSnGe_XRD/20240327_SbSnGe_100nm_150C_1h/46-analyze/"
+directory = r"data\SbSeGe_XRD\20240418_SbSeGe_100nm_300C_1h\22-analyze/"
 cluster_number = 10 #层次聚类数量
 r=5
 sigma=20

@@ -16,7 +16,7 @@ from scipy.signal import find_peaks
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 from scipy.ndimage import gaussian_filter1d, uniform_filter1d
 #from sklearn.preprocessing import StandardScaler
-import src.funda_XRD as fb
+import funda_XRD as fb
 
 # 指定给定角度列表和目录
 #given_angles = np.array([32.06, 44.95])
@@ -24,7 +24,7 @@ import src.funda_XRD as fb
 #given_angles = np.array([35.07, 40.06, 41.65, 44.15, 44.95, 48.08, 51.65])  # 示例给定角度
 #given_angles = np.array([23.64, 29.13, 30.78, 32.08])  # 示例给定角度
 #given_angles = np.array([23.61, 29.06, 31.08, 32.04, 33.48])  # 示例给定角度
-given_angles = np.array([40.15, 41.32, 41.88, 44.88, 48.23, 51.83])
+given_angles = np.array([24.3, 29.5, 31.85, 39.7, 46.1, 49.27])
 
 # 指定包含.xy文件的目录和文件夹名
 """
@@ -35,7 +35,7 @@ given_angles = np.array([40.15, 41.32, 41.88, 44.88, 48.23, 51.83])
 'F:\\学术研究\\数据存储\\Ge-Sb-X系相变材料\\20240114_XRD\\20231114_GeSbSe_100nm_300C_1h\\46-analyze'
 'F:\\学术研究\\数据存储\\Ge-Sb-X系相变材料\\20240114_XRD\\20231114_GeSbSe_100nm\\46-analyze
 """
-file_directory = 'SbSnGe_XRD/20240327_SbSnGe_100nm_300C_1h/'
+file_directory = 'data/SbSeGe_XRD/20240418_SbSeGe_100nm_300C_1h/'
 file = '46-analyze'
 directory = file_directory + file
 

@@ -851,7 +851,7 @@ def on_pick(event, directory, angle_center, r, sigma, window_size): #图形交�
     )
     data.identify(
         figure_title=f'100 nm-300C-1h-{ind}', 
-        display_number=8,
+        display_number=12,
         tolerance=0.2,
     )
 

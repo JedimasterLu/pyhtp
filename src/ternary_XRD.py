@@ -36,9 +36,9 @@ plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 
 ##############################基础变量及路径修改##########################
 # 1. 导入CSV文件（非晶类型）
-top_directory = "data/GeSbSe_XRD/20240108_GeSbSn_100nm_150C_1h"
-csv_file = 'data/GeSbSe_XRD/20240108_GeSbSn_100nm_150C_1h/GeSbSn_150C.xlsx'
-title='GeSbSn_150C' #图片标题名和存储名
+top_directory = "data/SbSeGe_XRD/20240418_SbSeGe_100nm_300C_1h"
+csv_file = 'data/SbSeGe_XRD/20240418_SbSeGe_100nm_300C_1h/SbSeGe_300C.xlsx'
+title='SbSeGe_300C' #图片标题名和存储名
 
 df_peaks = pd.read_excel(csv_file)
 #df_peaks = pd.read_csv(csv_file)
@@ -563,6 +563,74 @@ if title == 'SbSnGe_300C':
     latter = 1
     labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
 
+if title == "GeSbSe_150C":
+
+    former = 1
+    latter = 1
+    ordered_custom_order[latter] = 'Sb (R-3m)'
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+
+    former = 3
+    latter = 1
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+
+    former = 4
+    latter = 1
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+
+    former = 2
+    latter = 1
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    former = 2
+    latter = 1
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+
+if title == 'GeSbSe_300C':
+    
+    former = 1
+    latter = 1
+    ordered_custom_order[latter] = 'Sb (R-3m)'
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    former = 4
+    latter = 4
+    ordered_custom_order[latter] = 'Sb (R-3m) + Se (R-3)'
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    former = 3
+    latter = 4
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    point_Num = [8, 9, 7, 10, 11, 12, 6, 5, 4, 30, 29, 28]
+    latter = 3
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+    former = 2
+    latter = 1
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    former = 3
+    latter = 1
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    point_Num = [49]
+    latter = 0
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+if title == 'SbSeGe_300C':
+
+    former = 2
+    latter = 1
+    ordered_custom_order[latter] = 'GeSe (Pnma) + Se (P3121)'
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+
+    former = 4
+    latter = 4
+    ordered_custom_order[latter] = 'Sb (R-3m)'
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+
+    point_Num = [177, 176, 174, 173]
+    latter = 4
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+    former = 3
+    latter = 2
+    ordered_custom_order[latter] = 'SbSe (Pnma)'
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+
 print('labels:', labels)
 print('ordered_custom_order:', ordered_custom_order)
 
@@ -577,10 +645,10 @@ print('ordered_custom_order:', ordered_custom_order)
 #heatmap,tax = fb.plot_tri_con(ax,element3='Sn',labels = labels,title='GeSbSn_as',leveldown = 0,levelup = 3.5,terlinenum = terlinenum)
 #tax.show()  # pycharm不支持show，插值连续图，但感觉不好看
 #plt.savefig(save_path+title+'.png',dpi = 600) #保存图的命令
-plot_ternary_diagram(width=20,
-                     phase_type=ordered_custom_order,
+
+plot_ternary_diagram(phase_type=ordered_custom_order,
                      phase_index=labels,
-                     labels=['Sn', 'Ge', 'Sb'],
+                     labels=['Se', 'Ge', 'Sb'],
                      title=title,
                      color={
                          'amorphous': '#5EB89D',
@@ -588,7 +656,11 @@ plot_ternary_diagram(width=20,
                          'Sb (R-3m)': '#237AA6',
                          'SnSb (I4_1/amd)': '#E89C3D',
                          'Sn (I4_1/amd)': '#BD448E',
-                         'Ge (Fd-3m)': '#43624F'
+                         'Ge (Fd-3m)': '#43624F',
+                         'Se (R-3)': '#F56056',
+                         'GeSe (Pnma)': '#40DB59',
+                         'Se (P3121)': '#DB7335',
+                         'SbSe (Pnma)': '#9CDC3A'
                      },
                      if_show=True,
                      if_save=True,
@@ -598,11 +670,12 @@ plot_ternary_diagram(width=20,
                          'Sb (R-3m) + SnSb (I4_1/amd)': 0
                      }
                      )
+
 # 将点击事件绑定到散点图上,创建带有绑定参数的新函数，如果没有相应directory隐去下面部分
-#plt.ion()
-#on_pick_with_params = partial(fb.on_pick, directory=directory, angle_center=angle_center, r=r, sigma=sigma, window_size=window_size)
-#fig.canvas.mpl_connect('pick_event', on_pick_with_params)
-#plt.ioff()
+plt.ion()
+on_pick_with_params = partial(fb.on_pick, directory=directory, angle_center=angle_center, r=r, sigma=sigma, window_size=window_size)
+fig.canvas.mpl_connect('pick_event', on_pick_with_params)
+plt.ioff()
 #fig.savefig('SbSnGe-150C.png',dpi=600)
-#plt.show()
+plt.show()
 ##############################绘图及交互过程##########################
