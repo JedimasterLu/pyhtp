@@ -38,7 +38,7 @@ plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 # 1. 导入CSV文件（非晶类型）
 top_directory = "data/SbSeGe_XRD/20240418_SbSeGe_100nm_300C_1h"
 csv_file = 'data/SbSeGe_XRD/20240418_SbSeGe_100nm_300C_1h/SbSeGe_300C.xlsx'
-title='SbSeGe_300C' #图片标题名和存储名
+title='SbSnGe_as' #图片标题名和存储名
 
 df_peaks = pd.read_excel(csv_file)
 #df_peaks = pd.read_csv(csv_file)
@@ -631,6 +631,23 @@ if title == 'SbSeGe_300C':
     ordered_custom_order[latter] = 'SbSe (Pnma)'
     labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
 
+    former = 1
+    latter = 0
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+
+    point_Num = [172, 171, 170, 169, 168, 156, 157, 158, 98, 51]
+    latter = 2
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    point_Num = [159, 161, 149, 152, 134, 128, 130, 100, 101, 102, 103, 74, 75, 76, 39, 40, 41, 42, 71, 70, 69, 68, 67,
+                 65, 45, 46, 47, 48, 49, 62, 61, 86, 60, 52, 53, 54, 22, 44, 78, 79, 81, 80]
+    latter = 0
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    point_Num = [105]
+    latter = 1
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
 print('labels:', labels)
 print('ordered_custom_order:', ordered_custom_order)
 
@@ -647,7 +664,7 @@ print('ordered_custom_order:', ordered_custom_order)
 #plt.savefig(save_path+title+'.png',dpi = 600) #保存图的命令
 
 plot_ternary_diagram(phase_type=ordered_custom_order,
-                     phase_index=labels,
+                     phase_index=rotate_phase_index(labels),
                      labels=['Se', 'Ge', 'Sb'],
                      title=title,
                      color={
@@ -674,7 +691,7 @@ plot_ternary_diagram(phase_type=ordered_custom_order,
 # 将点击事件绑定到散点图上,创建带有绑定参数的新函数，如果没有相应directory隐去下面部分
 plt.ion()
 on_pick_with_params = partial(fb.on_pick, directory=directory, angle_center=angle_center, r=r, sigma=sigma, window_size=window_size)
-fig.canvas.mpl_connect('pick_event', on_pick_with_params)
+# fig.canvas.mpl_connect('pick_event', on_pick_with_params)
 plt.ioff()
 #fig.savefig('SbSnGe-150C.png',dpi=600)
 plt.show()
