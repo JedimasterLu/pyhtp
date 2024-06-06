@@ -343,7 +343,7 @@ def plot_ternary_diagram(phase_type: list[str],
     points = _get_points_position(width)
     # Plot the ternary diagram
     tax = ternary.TernaryAxesSubplot(ax=ax, scale=100)
-    tax.set_title(title, fontsize=15, fontweight='bold')
+    # tax.set_title(title, fontsize=15, fontweight='bold')
     # Plot the scatter of each phase
     for current_index in range(max(phase_index) + 1):
         current_type = phase_type[current_index]
@@ -383,10 +383,10 @@ def plot_ternary_diagram(phase_type: list[str],
                     legend_elements.append(mpl.lines.Line2D([0], [0], marker='o', color='w', label=current_type, markerfacecolor=color[current_type], markersize=10))
         ax.legend(handles=legend_elements, loc='upper right')
     # Set the axis and labels
-    tax.ticks(axis='lbr', linewidth=1, multiple=20)
-    tax.bottom_axis_label(labels[0], fontsize=15)
-    tax.right_axis_label(labels[1], fontsize=15)
-    tax.left_axis_label(labels[2], fontsize=15)
+    tax.ticks(axis='lbr', linewidth=1.5, multiple=20, fontsize=15, offset=0.02)
+    tax.bottom_axis_label(labels[0], fontsize=18, offset=0.08, fontweight='bold')
+    tax.right_axis_label(labels[1], fontsize=18, offset=0.12, fontweight='bold')
+    tax.left_axis_label(labels[2], fontsize=18, offset=0.12, fontweight='bold')
     tax.clear_matplotlib_ticks()
     tax.get_axes().axis('off')
     if if_show:
