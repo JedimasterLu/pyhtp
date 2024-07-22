@@ -36,9 +36,9 @@ plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 
 ##############################基础变量及路径修改##########################
 # 1. 导入CSV文件（非晶类型）
-top_directory = "data/SbSeGe_XRD/20240418_SbSeGe_100nm_300C_1h"
-csv_file = 'data/SbSeGe_XRD/20240418_SbSeGe_100nm_300C_1h/SbSeGe_300C.xlsx'
-title='SbSnGe_as' #图片标题名和存储名
+top_directory = "data/SbSeGe_XRD/20240719_SbSeGe_100nm_300C_1h_new"
+csv_file = 'data/SbSeGe_XRD/20240719_SbSeGe_100nm_300C_1h_new/SbSeGe_300C.xlsx'
+title='SbSeGe_300C_new' #图片标题名和存储名
 
 df_peaks = pd.read_excel(csv_file)
 #df_peaks = pd.read_csv(csv_file)
@@ -337,7 +337,7 @@ if title == 'GeSbSn_300C':
     labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
     former = 8
     latter = 8
-    ordered_custom_order[latter] = 'Ge (Fd-3m)'
+    ordered_custom_order[latter] = 'GeSn (Fd-3m)'
     labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
     point_Num = [194,182]
     latter = 8
@@ -416,7 +416,19 @@ if title == 'GeSbSn_300C':
 
     point_Num = [164, 163, 143, 144, 142, 141]
     latter = 6
-    ordered_custom_order.append('Ge (Fd-3m) + Sn (I4_1/amd)')
+    ordered_custom_order.append('GeSn (Fd-3m) + Sn (I4_1/amd)')
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    point_Num = [148]
+    latter = 3
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    point_Num = [161, 162, 146, 195, 146, 164]
+    latter = 0
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    point_Num = [166]
+    latter = 6
     labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
 
 if title == 'SbSnGe_150C':
@@ -648,6 +660,38 @@ if title == 'SbSeGe_300C':
     latter = 1
     labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
 
+if title == 'SbSeGe_150C':
+
+    former = 3
+    latter = 0
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    former = 1
+    latter = 0
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    former = 1
+    latter = 0
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    former = 1
+    latter = 0
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    former = 2
+    latter = 1
+    ordered_custom_order[latter] = 'Sb (R-3m)'
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    point_Num = [190, 189, 188, 187, 186, 174, 175, 176, 177, 178, 179, 181, 173, 172]
+    latter = 1
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+if title == "SbSeGe_300C_new":
+
+    former = 2
+    latter = 0
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    former = 1
+    latter = 0
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+
+
 print('labels:', labels)
 print('ordered_custom_order:', ordered_custom_order)
 
@@ -657,15 +701,15 @@ print('ordered_custom_order:', ordered_custom_order)
 ##############################peaks聚类的自定义区间##########################
 
 ##############################绘图及交互过程##########################
-#fig, ax = plt.subplots(figsize = (10, 6))
-#heatmap,tax = fb.plot_tri(ax,element3=element3,labels = labels,title= title,terlinenum = terlinenum, ordered_custom_order = ordered_custom_order)
+fig, ax = plt.subplots(figsize = (10, 6))
+heatmap,tax = fb.plot_tri(ax,element3=element3,labels = labels,title= title,terlinenum = terlinenum, ordered_custom_order = ordered_custom_order)
 #heatmap,tax = fb.plot_tri_con(ax,element3='Sn',labels = labels,title='GeSbSn_as',leveldown = 0,levelup = 3.5,terlinenum = terlinenum)
 #tax.show()  # pycharm不支持show，插值连续图，但感觉不好看
 #plt.savefig(save_path+title+'.png',dpi = 600) #保存图的命令
-
+'''
 plot_ternary_diagram(phase_type=ordered_custom_order,
-                     phase_index=rotate_phase_index(labels),
-                     labels=['Se', 'Ge', 'Sb'],
+                     phase_index=labels,
+                     labels=['Ge', 'Sb', 'Sn'],
                      title=title,
                      color={
                          'amorphous': '#5EB89D',
@@ -673,7 +717,7 @@ plot_ternary_diagram(phase_type=ordered_custom_order,
                          'Sb (R-3m)': '#237AA6',
                          'SnSb (I4_1/amd)': '#E89C3D',
                          'Sn (I4_1/amd)': '#BD448E',
-                         'Ge (Fd-3m)': '#43624F',
+                         'GeSn (Fd-3m)': '#43624F',
                          'Se (R-3)': '#F56056',
                          'GeSe (Pnma)': '#40DB59',
                          'Se (P3121)': '#DB7335',
@@ -681,17 +725,17 @@ plot_ternary_diagram(phase_type=ordered_custom_order,
                      },
                      if_show=True,
                      if_save=True,
-                     if_legend=True,
+                     if_legend=False,
                      rotation={
-                         'Ge (Fd-3m) + Sn (I4_1/amd)': 300,
+                         'GeSn (Fd-3m) + Sn (I4_1/amd)': 300,
                          'Sb (R-3m) + SnSb (I4_1/amd)': 0
                      }
                      )
-
+'''
 # 将点击事件绑定到散点图上,创建带有绑定参数的新函数，如果没有相应directory隐去下面部分
 plt.ion()
 on_pick_with_params = partial(fb.on_pick, directory=directory, angle_center=angle_center, r=r, sigma=sigma, window_size=window_size)
-# fig.canvas.mpl_connect('pick_event', on_pick_with_params)
+fig.canvas.mpl_connect('pick_event', on_pick_with_params)
 plt.ioff()
 #fig.savefig('SbSnGe-150C.png',dpi=600)
 plt.show()

@@ -400,7 +400,20 @@ class XrdProcess:
         rating = dict(sorted(rating.items(), key=lambda item: item[1], reverse=True))
         return list(rating.keys())
 
-    def identify(self, mask: list[list[float, float]]=None, height: float=0.06, mask_height: float=0.12, tolerance: float=0.3, display_number: int=5, figure_title: str='', window: int=101, factor: float=0.5, save_path: str='', if_show: bool=True, lam: int=200, if_process: bool=True) -> None | mpl.axes.Axes:
+    def identify(self,
+                 mask: list[list[float, float]]=None,
+                 height: float=0.06,
+                 mask_height: float=0.12,
+                 tolerance: float=0.3,
+                 display_number: int=5,
+                 figure_title: str='',
+                 window: int=101,
+                 factor: float=0.5,
+                 save_path: str='',
+                 if_show: bool=True,
+                 lam: int=200,
+                 if_process: bool=True,
+                 elements: list[str]=None) -> None | mpl.axes.Axes:
         '''identify the structure of the xrd data by generate a plot to show the comparison between the xrd data and reference data.
 
         Args:
@@ -449,6 +462,21 @@ class XrdProcess:
         # Plot reference data
         adpc = XRDCalculator()
         possible_index = []
+        # If elements are given, only display the reference data that contains the elements
+        if elements:
+            for possible_ref in match_result:
+                # If possible_ref doesn't contain all the elements, remove it from the list
+                for element in elements:
+                    if not element.startswith('-'):
+                        if element not in possible_ref:
+                            match_result.remove(possible_ref)
+                            break
+                    else:  # If the element is in the negative form, the reference data should not contain the element
+                        if element.lstrip('-') in possible_ref:
+                            match_result.remove(possible_ref)
+                            break
+        if len(match_result) < display_number:
+            display_number = len(match_result)
         for possible_ref in match_result[0:display_number]:
             for index, pattern in enumerate(pattern_database):
                 if pattern['name'] == possible_ref:

@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import funda_XRD as fb
 
 # 指定包含.xy文件的目录
-directory = r"data\SbSeGe_XRD\20240418_SbSeGe_100nm_300C_1h\22-analyze/"
+directory = r"C:\Users\JedimasterLu\Desktop\VSCode\pyhtp\data\SbSeGe_XRD\20240708_SbSeGe_100nm_150C_1h/"
 cluster_number = 10 #层次聚类数量
 r=5
 sigma=20
