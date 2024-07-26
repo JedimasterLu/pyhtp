@@ -64,6 +64,15 @@ class XrdPlotter:
             # pylint: enable=no-member
         else:
             self.colormap = colormap
+        self.baseline_index = None
+
+    def set_amorphous_baseline(self, index: int):
+        """Set a baseline index for amorphous phase. If set, all data will be substracted by this baseline.
+
+        Args:
+            index (int): _description_
+        """
+        self.baseline_index = index
 
     def set_save_dir(self, save_dir: str) -> None:
         '''set_save_dir sets the save directory.
@@ -192,6 +201,10 @@ class XrdPlotter:
                 right_path = self.file_dir[1] + self.right_xy[index]
                 # Process data
                 original_data = XrdProcess([left_path, right_path])
+                if self.baseline_index is not None:
+                    amorphous_data = XrdProcess([self.file_dir[0] + self.left_xy[self.baseline_index],
+                                                 self.file_dir[1] + self.right_xy[self.baseline_index]])
+                    original_data.intensity -= amorphous_data.intensity
                 substracted_data = original_data.substract_baseline(lam=lam)
                 smoothed_data = substracted_data.smooth(window=window, factor=factor)
                 _, peaks_index, _ = smoothed_data.peaks(mask=mask, height=height, mask_height=mask_height)
@@ -217,6 +230,16 @@ class XrdPlotter:
                 right_path = self.file_dir[1] + self.right_xy[index]
                 # Process data
                 original_data = XrdProcess([left_path, right_path])
+                if self.baseline_index is not None:
+                    amorphous_data = XrdProcess([self.file_dir[0] + self.left_xy[self.baseline_index],
+                                                 self.file_dir[1] + self.right_xy[self.baseline_index]])
+                    if len(amorphous_data.intensity) > len(original_data.intensity):
+                        amorphous_data.intensity = amorphous_data.intensity[:len(original_data.intensity)]
+                        amorphous_data.two_theta = amorphous_data.two_theta[:len(original_data.two_theta)]
+                    else:
+                        original_data.intensity = original_data.intensity[:len(amorphous_data.intensity)]
+                        original_data.two_theta = original_data.two_theta[:len(amorphous_data.two_theta)]
+                    original_data.intensity -= amorphous_data.intensity
                 substracted_data = original_data.substract_baseline(lam=lam)
                 smoothed_data = substracted_data.smooth(window=window, factor=factor)
                 _, peaks_index, _ = smoothed_data.peaks(mask=mask, height=height, mask_height=mask_height)
@@ -499,6 +522,24 @@ def rotate_phase_index(phase_index: list[int]) -> list[int]:
     return rotated_phase_index
 
 
+def _get_rotate_mapping(width: int) -> list[int]:
+    """_summary_
+
+    Args:
+        width (int): _description_
+
+    Returns:
+        list[int]: _description_
+    """
+    mapping = []
+    for row in range(width):
+        current_width = width - row
+        # Extend the index of the right row into mapping
+        for column in range(current_width):
+            mapping.append(current_width - 1 + column * (width - 1 + width - column) // 2)
+    return mapping
+
+
 def _snake_to_serial(width: int, phase_index: list[int]) -> list[int]:
     '''snake_to_serial _summary_
 
@@ -520,11 +561,11 @@ def _snake_to_serial(width: int, phase_index: list[int]) -> list[int]:
     return serial_phase_index
 
 
-def _get_width(index: list[int]) -> int:
+def _get_width(index: list) -> int:
     '''_get_width return the width of the ternary diagram.
 
     Args:
-        index (list[int]): The index of the points.
+        index (list): The index of the points.
 
     Returns:
         int: The width of the diagram.
@@ -542,3 +583,105 @@ def _get_width(index: list[int]) -> int:
     if width * (width + 1) / 2 != length:
         raise ValueError('The index length is not a triangle number!')
     return width
+
+
+def plot_xrd_on_ternary_line(xrd_file_dir: list[str, str],
+                             start_point: tuple[float, float, float],
+                             end_point: tuple[float, float, float],
+                             detect_radius: float=-1,
+                             baseline_index: int=None,
+                             rotate_times: int=0,
+                             **kwargs) -> None:
+    """This function plots the xrd data on a line in ternary diagram.
+
+    Args:
+        xrd_file_dir (list[str, str]): _description_
+        start_point (tuple[float, float, float]): _description_
+        end_point (tuple[float, float, float]): _description_
+        detect_radius (float, optional): _description_. Defaults to -1.
+        baseline_index (int, optional): _description_. Defaults to None.
+    """
+    # Create a instance of XrdPlotter
+    plotter = XrdPlotter(xrd_file_dir)
+    if baseline_index is not None:
+        plotter.set_amorphous_baseline(baseline_index)
+    # Get the index of the xrd data points on the line
+    # If the distance of a point to the line is less than detect_radius, it is considered on the line
+    width = _get_width(plotter.left_xy)
+    point_index = _get_points_position(width)
+    # Decide detect radius based on the distance between two points
+    if detect_radius == -1:
+        detect_radius = 0.5 * 3 ** 0.5 * 100 / width
+    index_to_plot = []
+    for index, point in enumerate(point_index):
+        if _distance_to_line(point, start_point, end_point) < detect_radius:
+            index_to_plot.append(index)
+    # Sort the index_to_plot based on the distance to the start point
+    index_to_plot.sort(key=lambda x: _distance_between_points(point_index[x], start_point))
+    # Rotate the phase index if needed
+    mapping = _get_rotate_mapping(width)
+    for _ in range(rotate_times):
+        index_to_plot = [mapping[i] for i in index_to_plot]
+    # Plot the xrd data
+    plotter.plot_spectrum(index_to_plot=index_to_plot, plot_type='stack', **kwargs)
+
+
+def _ternary_to_cartesian(point: tuple[float, float, float]) -> tuple[float, float]:
+    '''This function converts the ternary coordinates to cartesian coordinates.
+
+    Args:
+        point (tuple[float, float, float]): _description_
+
+    Returns:
+        tuple[float, float]: _description_
+    '''
+    x = 0.5 * (2 * point[1] + point[2]) / (point[0] + point[1] + point[2]) * 100
+    y = 0.5 * 3 ** 0.5 * point[2] / (point[0] + point[1] + point[2]) * 100 
+    return (x, y)
+
+
+def _distance_to_line(point: tuple[float, float, float],
+                      start_point: tuple[float, float, float],
+                      end_point: tuple[float, float, float]) -> float:
+    """This function calculates the distance of a point to a line.
+
+    Args:
+        point (tuple[float, float, float]): _description_
+        start_point (tuple[float, float, float]): _description_
+        end_point (tuple[float, float, float]): _description_
+
+    Returns:
+        float: _description_
+    """
+    # Convert the ternary coordinates to cartesian coordinates
+    point_cartesian = _ternary_to_cartesian(point)
+    start_point_cartesian = _ternary_to_cartesian(start_point)
+    end_point_cartesian = _ternary_to_cartesian(end_point)
+    # Calculate the distance
+    distance = abs((end_point_cartesian[1] - start_point_cartesian[1]) * point_cartesian[0]
+                   - (end_point_cartesian[0] - start_point_cartesian[0]) * point_cartesian[1]
+                   + end_point_cartesian[0] * start_point_cartesian[1]
+                   - end_point_cartesian[1] * start_point_cartesian[0]) \
+        / ((end_point_cartesian[1] - start_point_cartesian[1]) ** 2
+           + (end_point_cartesian[0] - start_point_cartesian[0]) ** 2) ** 0.5
+    return distance
+
+
+def _distance_between_points(point1: tuple[float, float, float],
+                             point2: tuple[float, float, float]) -> float:
+    """This function calculates the distance between two points.
+
+    Args:
+        point1 (tuple[float, float, float]): _description_
+        point2 (tuple[float, float, float]): _description_
+
+    Returns:
+        float: _description_
+    """
+    # Convert the ternary coordinates to cartesian coordinates
+    point1_cartesian = _ternary_to_cartesian(point1)
+    point2_cartesian = _ternary_to_cartesian(point2)
+    # Calculate the distance
+    distance = ((point1_cartesian[0] - point2_cartesian[0]) ** 2
+                + (point1_cartesian[1] - point2_cartesian[1]) ** 2) ** 0.5
+    return distance

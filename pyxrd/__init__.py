@@ -5,5 +5,5 @@ Author: Junyuan Lu
 Contact: Lujunyuan@sjtu.edu.cn
 """
 from pyxrd.process import XrdProcess
-from pyxrd.plotter import XrdPlotter, plot_ternary_diagram
+from pyxrd.plotter import XrdPlotter, plot_ternary_diagram, plot_xrd_on_ternary_line
 from pyxrd.database import XrdDatabase

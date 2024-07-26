@@ -22,7 +22,7 @@ import numpy as np
 import copy
 import src.funda_XRD as fb
 from functools import partial
-from pyxrd.plotter import plot_ternary_diagram, rotate_phase_index
+from pyxrd.plotter import plot_ternary_diagram, rotate_phase_index, plot_xrd_on_ternary_line
 plt.rc('font',family='Times New Roman')
 
 SMALL_SIZE = 14
@@ -36,9 +36,9 @@ plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 
 ##############################基础变量及路径修改##########################
 # 1. 导入CSV文件（非晶类型）
-top_directory = "data/SbSeGe_XRD/20240719_SbSeGe_100nm_300C_1h_new"
-csv_file = 'data/SbSeGe_XRD/20240719_SbSeGe_100nm_300C_1h_new/SbSeGe_300C.xlsx'
-title='SbSeGe_300C_new' #图片标题名和存储名
+top_directory = "data/GeSbSe_XRD/20240108_GeSbSn_100nm_150C_1h"
+csv_file = 'data/GeSbSe_XRD/20240108_GeSbSn_100nm_150C_1h/GeSbSn_150C.xlsx'
+title='SbSeGe_150C' #图片标题名和存储名
 
 df_peaks = pd.read_excel(csv_file)
 #df_peaks = pd.read_csv(csv_file)
@@ -605,7 +605,7 @@ if title == 'GeSbSe_300C':
     labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
     former = 4
     latter = 4
-    ordered_custom_order[latter] = 'Sb (R-3m) + Se (R-3)'
+    ordered_custom_order[latter] = 'Sb (R-3m) + SbSe (Pnma)'
     labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
     former = 3
     latter = 4
@@ -621,6 +621,9 @@ if title == 'GeSbSe_300C':
     labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
     point_Num = [49]
     latter = 0
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+    point_Num = [0, 1, 2, 3, 38, 37, 36, 35]
+    latter = 2
     labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
 
 if title == 'SbSeGe_300C':
@@ -690,7 +693,38 @@ if title == "SbSeGe_300C_new":
     former = 1
     latter = 0
     labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
-
+    former = 2
+    latter = 0
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    former = 1
+    latter = 1
+    ordered_custom_order[latter] = 'SbSe (Pnma)'
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    former = 2
+    latter = 2
+    ordered_custom_order[latter] = 'Sb (R-3m)'
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+    point_Num = [177]
+    latter = 3
+    ordered_custom_order[latter] = 'Sb (R-3m) + SbSe (Pnma)'
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+    point_Num = [74, 11, 20, 107, 109]
+    latter = 0
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+    point_Num = [133, 134, 153, 156, 151, 152, 127, 129, 130, 131, 105, 172, 157, 150, 136, 126, 137,
+                 138]
+    latter = 1
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+    point_Num = [155, 154, 158, 176, 209, 208, 207,
+                 206, 205, 204, 200, 201, 202, 199,
+                 198, 197, 196, 192, 191, 190, 189,
+                 188, 187, 186, 185, 174, 175, 173,
+                 171, 170, 159, 149]
+    latter = 3
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+    point_Num = [162, 163, 148, 147, 146, 145]
+    latter = 2
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
 
 print('labels:', labels)
 print('ordered_custom_order:', ordered_custom_order)
@@ -708,8 +742,8 @@ heatmap,tax = fb.plot_tri(ax,element3=element3,labels = labels,title= title,terl
 #plt.savefig(save_path+title+'.png',dpi = 600) #保存图的命令
 '''
 plot_ternary_diagram(phase_type=ordered_custom_order,
-                     phase_index=labels,
-                     labels=['Ge', 'Sb', 'Sn'],
+                     phase_index=rotate_phase_index(labels),
+                     labels=['Se', 'Ge', 'Sb'],
                      title=title,
                      color={
                          'amorphous': '#5EB89D',
@@ -718,17 +752,17 @@ plot_ternary_diagram(phase_type=ordered_custom_order,
                          'SnSb (I4_1/amd)': '#E89C3D',
                          'Sn (I4_1/amd)': '#BD448E',
                          'GeSn (Fd-3m)': '#43624F',
-                         'Se (R-3)': '#F56056',
                          'GeSe (Pnma)': '#40DB59',
                          'Se (P3121)': '#DB7335',
-                         'SbSe (Pnma)': '#9CDC3A'
+                         'SbSe (Pnma)': '#F56056'
                      },
-                     if_show=True,
+                     if_show=False,
                      if_save=True,
-                     if_legend=False,
+                     if_legend=True,
                      rotation={
                          'GeSn (Fd-3m) + Sn (I4_1/amd)': 300,
-                         'Sb (R-3m) + SnSb (I4_1/amd)': 0
+                         'Sb (R-3m) + SnSb (I4_1/amd)': 0,
+                         'Sb (R-3m) + SbSe (Pnma)': -90
                      }
                      )
 '''
@@ -738,5 +772,12 @@ on_pick_with_params = partial(fb.on_pick, directory=directory, angle_center=angl
 fig.canvas.mpl_connect('pick_event', on_pick_with_params)
 plt.ioff()
 #fig.savefig('SbSnGe-150C.png',dpi=600)
-plt.show()
+'''
+plot_xrd_on_ternary_line(xrd_file_dir=directory,
+                         start_point=(0, 100, 0),
+                         end_point=(40, 0, 60),
+                         detect_radius=1.2,
+                         baseline_index=91,
+                         v_margin=0.4, plot_peaks=False, factor=0.1, window=11, lam=100)
+'''
 ##############################绘图及交互过程##########################
