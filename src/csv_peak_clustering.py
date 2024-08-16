@@ -24,7 +24,7 @@ import funda_XRD as fb
 #given_angles = np.array([35.07, 40.06, 41.65, 44.15, 44.95, 48.08, 51.65])  # 示例给定角度
 #given_angles = np.array([23.64, 29.13, 30.78, 32.08])  # 示例给定角度
 #given_angles = np.array([23.61, 29.06, 31.08, 32.04, 33.48])  # 示例给定角度
-given_angles = np.array([23.79, 25.37, 31.87, 34.70, 48.45, 51.95])
+given_angles = np.array([28.9, 40.2, 42, 48.7, 51.8])
 
 # 指定包含.xy文件的目录和文件夹名
 """
@@ -35,7 +35,7 @@ given_angles = np.array([23.79, 25.37, 31.87, 34.70, 48.45, 51.95])
 'F:\\学术研究\\数据存储\\Ge-Sb-X系相变材料\\20240114_XRD\\20231114_GeSbSe_100nm_300C_1h\\46-analyze'
 'F:\\学术研究\\数据存储\\Ge-Sb-X系相变材料\\20240114_XRD\\20231114_GeSbSe_100nm\\46-analyze
 """
-file_directory = 'data/SbSeGe_XRD/20240719_SbSeGe_100nm_300C_1h_new/'
+file_directory = 'data/SbSeGe_XRD/20240418_SbSeGe_100nm_as/'
 file = '46-analyze'
 directory = file_directory + file
 

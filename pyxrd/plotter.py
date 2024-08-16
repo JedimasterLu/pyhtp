@@ -392,26 +392,14 @@ def plot_ternary_diagram(phase_type: list[str],
     # Set legends
     if if_legend:
         legend_elements = []
-        for current_index in range(max(phase_index) + 1):
-            current_type = phase_type[current_index]
-            if ' + ' in current_type:
-                current_type = current_type.split(' + ')
-                # If legend doesn't exist, add it
-                if current_type[0] not in [element.get_label() for element in legend_elements]:
-                    legend_elements.append(mpl.lines.Line2D([0], [0], marker='o', color='w', label=current_type[0], markerfacecolor=color[current_type[0]], markersize=10))
-                if current_type[1] not in [element.get_label() for element in legend_elements]:
-                    legend_elements.append(mpl.lines.Line2D([0], [0], marker='o', color='w', label=current_type[1], markerfacecolor=color[current_type[1]], markersize=10))
-            else:
-                if current_type not in [element.get_label() for element in legend_elements]:
-                    legend_elements.append(mpl.lines.Line2D([0], [0], marker='o', color='w', label=current_type, markerfacecolor=color[current_type], markersize=10))
-        # ax.legend(handles=legend_elements, loc='upper right')
-        # Move legend right
-        ax.legend(loc='center left', bbox_to_anchor=(0.9, 0.8), handles=legend_elements, fontsize=13)
+        for label, color_name in color.items():
+            legend_elements.append(mpl.lines.Line2D([0], [0], marker='o', color='w', label=label, markerfacecolor=color_name, markersize=15))
+        ax.legend(loc='center left', bbox_to_anchor=(1.1, 0.6), handles=legend_elements, fontsize=20)
     # Set the axis and labels
-    tax.ticks(axis='lbr', linewidth=1.5, multiple=20, fontsize=15, offset=0.02)
-    tax.bottom_axis_label(labels[0], fontsize=18, offset=0.08, fontweight='bold')
-    tax.right_axis_label(labels[1], fontsize=18, offset=0.12, fontweight='bold')
-    tax.left_axis_label(labels[2], fontsize=18, offset=0.12, fontweight='bold')
+    tax.ticks(axis='lbr', linewidth=1.5, multiple=20, fontsize=15, offset=0.04)
+    tax.bottom_axis_label(labels[0], fontsize=24, offset=0.2, fontweight='bold')
+    tax.right_axis_label(labels[1], fontsize=24, offset=0.2, fontweight='bold')
+    tax.left_axis_label(labels[2], fontsize=24, offset=0.2, fontweight='bold')
     tax.clear_matplotlib_ticks()
     tax.get_axes().axis('off')
     if if_show:

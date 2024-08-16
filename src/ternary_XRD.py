@@ -36,9 +36,9 @@ plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 
 ##############################基础变量及路径修改##########################
 # 1. 导入CSV文件（非晶类型）
-top_directory = "data/GeSbSe_XRD/20240108_GeSbSn_100nm_150C_1h"
-csv_file = 'data/GeSbSe_XRD/20240108_GeSbSn_100nm_150C_1h/GeSbSn_150C.xlsx'
-title='SbSeGe_150C' #图片标题名和存储名
+top_directory = "data/GeSbSe_XRD/20240106_GeSbSn_100nm_300C_1h"
+csv_file = 'data/GeSbSe_XRD/20240106_GeSbSn_100nm_300C_1h/GeSbSn_300C.xlsx'
+title='GeSbSn_300C' #图片标题名和存储名
 
 df_peaks = pd.read_excel(csv_file)
 #df_peaks = pd.read_csv(csv_file)
@@ -85,107 +85,6 @@ labels, ordered_custom_order = fb.auto_exchange(labels, label_name)
 ##############################XRD模拟峰位图的绘制##########################
 
 ##############################peaks聚类的自定义区间##########################
-'''
-# GeSbSn-as
-peaks1 = np.array([1])
-peaks2 = np.array([1,2])
-
-# GeSbSn-150C #11为amorphous
-peaks1 = np.array([1])
-peaks2 = np.array([1,2,3,4,5,6,12,13])
-peaks3 = np.array([7,8,9,10,14,15])
-peaks4 = np.array([6,8,9,15,16])
-peaks5 = np.array([1,2,3,4,6,7,8,9,10,16])
-peaks6 = np.array([1,2,13])
-peaks7 = np.array([4,5])
-peaks8 = np.array([8,10])
-peaks9 = np.array([1])
-
-labels = fb.exchange(labels, 11, 0)
-labels = fb.exchange(labels, 2, 1)
-labels = fb.exchange(labels, 3, 1)
-labels = fb.exchange(labels, 4, 2)
-labels = fb.exchange(labels, 5, 3)
-labels = fb.exchange(labels, 6, 4)
-labels = fb.exchange(labels, 7, 5)
-labels = fb.exchange(labels, 8, 6)
-labels = fb.exchange(labels, 9, 6)
-labels = fb.exchange(labels, 10, 5)
-labels = fb.exchange(labels, 12, 7)
-labels = fb.exchange(labels, 13, 7)
-labels = fb.exchange(labels, 14, 8)
-labels = fb.exchange(labels, 15, 9)
-labels = fb.exchange(labels, 16, 10)
-
-
-# GeSbSn-300C #16为amorphous
-peaks1 = np.array([1,2,3])
-peaks2 = np.array([1,2,3,4,5,6,12,13])
-peaks3 = np.array([7,8,9,10,14,15])
-peaks4 = np.array([6,8,9,15,16])
-peaks5 = np.array([9,10,12])#
-peaks6 = np.array([1,2,13])
-peaks7 = np.array([4,5])
-peaks8 = np.array([8,10])
-peaks9 = np.array([10,11,12])#
-peaks10 = np.array([22,23,24,27,28,31])#
-peaks11 = np.array([1])
-peaks12 = np.array([25,30])#
-
-labels = fb.exchange(labels, 2, 1)
-labels = fb.exchange(labels, 19, 1)
-labels = fb.exchange(labels, 21, 1)
-labels = fb.exchange(labels, 3, 2)
-labels = fb.exchange(labels, 4, 2)
-labels = fb.exchange(labels, 5, 2)
-labels = fb.exchange(labels, 6, 3)
-labels = fb.exchange(labels, 7, 4)
-labels = fb.exchange(labels, 8, 5)
-labels = fb.exchange(labels, 9, 6)
-labels = fb.exchange(labels, 14, 6)
-labels = fb.exchange(labels, [10,20], 7)
-labels = fb.exchange(labels, 11, 8)
-labels = fb.exchange(labels, 12, 9)
-labels = fb.exchange(labels, [13,27,22,24], 10)
-labels = fb.exchange(labels, [15,30], 11)
-labels = fb.exchange(labels, 16, 12)# 16-25-12-0
-labels = fb.exchange(labels, 25, 12)# 16-25-12-0
-labels = fb.exchange(labels, [17,18,29], 13)
-labels = fb.exchange(labels, [23,31], 14)
-labels = fb.exchange(labels, [26,28], 15)
-
-# GeSbSe-150C 
-peaks1 = np.array([1,7,8])
-peaks2 = np.array([1,3,4,5,6])
-peaks3 = np.array([1,2,4,5,7])
-peaks4 = np.array([1,2,5,6,7])
-
-labels = fb.exchange(labels, [7,8], 2)
-labels = fb.exchange(labels, [4,5,6], 1) #1必须在1
-labels = fb.exchange(labels, 3, 3)
-
-# GeSbSe-300C
-peaks1 = np.array([1,2,3,6,9])
-peaks2 = np.array([6,7,8])
-peaks3 = np.array([1,2,5,6])
-peaks4 = np.array([1,2,3,4,5,6,8])
-
-labels = fb.exchange(labels, [2,3,4,5,9], 1)
-labels = fb.exchange(labels, [6,8], 2)
-labels = fb.exchange(labels, 7, 3)
-
-fb.exchange(labels, 7, 6)
-fb.exchange(labels, 9, 6)
-fb.exchange(labels, 10, 6)
-fb.exchange(labels, 11, 6)
-fb.exchange(labels, 12, 6)
-fb.exchange(labels, 13, 6)
-fb.exchange(labels, 14, 6)
-fb.exchange(labels, 15, 6)
-fb.exchange(labels, 16, 6)
-fb.exchange(labels, 18, 6)
-#labels = fb.exchange(labels, peaks4, 1, others = 'False')
-'''
 # 自定义类型
 if title == 'GeSbSn_150C':
     
@@ -431,6 +330,53 @@ if title == 'GeSbSn_300C':
     latter = 6
     labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
 
+    ordered_custom_order.append('Sb (R-3m) + Sb (P6_3/mmc)')
+    point_Num = [0, 1, 2, 3, 4, 38, 37, 36, 35, 39,
+                 40, 41, 73, 72, 71, 74, 75, 76, 103, 104,
+                 105, 131]
+    latter = 7
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    former = 2
+    latter = 2
+    ordered_custom_order[latter] = 'SnSb (R-3m) + Sb (P6_3/mmc)'
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
+
+    ordered_custom_order.append('SnSb (R-3m)')
+    point_Num = [108, 128, 135, 151, 109, 127, 136, 150, 171, 99,
+                 100, 110, 97, 111, 82, 125, 81, 66, 64, 67, 49,
+                 137, 112, 80, 98, 65, 50, 62]
+    latter = 8
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    ordered_custom_order.append('Sb (P6_3/mmc) + Sn (I4/mmm) + SnSb (R-3m)')
+    point_Num = [12, 11, 10, 27, 26, 25]
+    latter = 9
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    ordered_custom_order.append('SnSb (R-3m) + Sn (I4/mmm) + SnSb (I4_1/amd)')
+    point_Num = [25, 14, 13, 52, 23]
+    latter = 10
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    ordered_custom_order.append('Sn (I4/mmm) + SnSb (I4_1/amd)')
+    point_Num = [24, 15, 16, 17, 22, 54, 53, 59, 60, 18, 21, 55]
+    latter = 11
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    point_Num = [58, 88, 91, 117, 120]
+    latter = 3
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    ordered_custom_order.append('SnSb (R-3m) + SnSb (I4_1/amd)')
+    point_Num = [85]
+    latter = 12
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    point_Num = [126, 51]
+    latter = 0
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
 if title == 'SbSnGe_150C':
 
     former = 5
@@ -521,7 +467,7 @@ if title == 'SbSnGe_300C':
 
     former = 5
     latter = 5
-    ordered_custom_order[latter] = 'Sb (R-3m) + SnSb (I4_1/amd)'
+    ordered_custom_order[latter] = 'Sb (R-3m) + Sb (P6_3/mmc)'
     labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
 
     former = 8
@@ -573,6 +519,10 @@ if title == 'SbSnGe_300C':
 
     point_Num = [126, 137]
     latter = 1
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+    point_Num = [209, 208, 204, 195, 194, 182, 203]
+    latter = 3
     labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
 
 if title == "GeSbSe_150C":
@@ -684,6 +634,12 @@ if title == 'SbSeGe_150C':
     point_Num = [190, 189, 188, 187, 186, 174, 175, 176, 177, 178, 179, 181, 173, 172]
     latter = 1
     labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+    ordered_custom_order.append('Sb (R-3m) + SbSe (Pnma)')
+    point_Num = [206, 200, 199, 189, 188, 174, 173, 205, 201, 198,
+                 190, 175, 172, 187, 202, 197, 191, 186, 176, 196,
+                 192, 185, 177, 193, 184, 178, 179]
+    latter = 2
+    labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
 
 if title == "SbSeGe_300C_new":
 
@@ -725,6 +681,12 @@ if title == "SbSeGe_300C_new":
     point_Num = [162, 163, 148, 147, 146, 145]
     latter = 2
     labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
+
+if title == 'SbSeGe_as':
+    former = 2
+    latter = 1
+    ordered_custom_order[latter] = 'Sb (R-3m)'
+    labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
 
 print('labels:', labels)
 print('ordered_custom_order:', ordered_custom_order)
@@ -771,6 +733,7 @@ plt.ion()
 on_pick_with_params = partial(fb.on_pick, directory=directory, angle_center=angle_center, r=r, sigma=sigma, window_size=window_size)
 fig.canvas.mpl_connect('pick_event', on_pick_with_params)
 plt.ioff()
+plt.show()
 #fig.savefig('SbSnGe-150C.png',dpi=600)
 '''
 plot_xrd_on_ternary_line(xrd_file_dir=directory,
@@ -781,3 +744,9 @@ plot_xrd_on_ternary_line(xrd_file_dir=directory,
                          v_margin=0.4, plot_peaks=False, factor=0.1, window=11, lam=100)
 '''
 ##############################绘图及交互过程##########################
+'''
+import pickle
+save_data = {'phase_index': labels, 'phase_type': ordered_custom_order}
+with open(f'data/plot/{title}.pkl', 'wb') as f:
+    pickle.dump(save_data, f)
+'''

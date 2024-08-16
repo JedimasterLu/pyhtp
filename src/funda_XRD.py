@@ -853,7 +853,7 @@ def on_pick(event, directory, angle_center, r, sigma, window_size): #图形交�
         figure_title=f'100 nm-300C-1h-{ind}', 
         display_number=8,
         tolerance=1,
-        elements=['Sb', '-Ge', "-Sn"]
+        elements=['-Se', '-Ge']
     )
 
 def add_zeros(string, n): #自动填充零

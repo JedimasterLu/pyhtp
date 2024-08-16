@@ -464,17 +464,20 @@ class XrdProcess:
         possible_index = []
         # If elements are given, only display the reference data that contains the elements
         if elements:
-            for possible_ref in match_result:
+            index_to_remove = []
+            for index, possible_ref in enumerate(match_result):
                 # If possible_ref doesn't contain all the elements, remove it from the list
                 for element in elements:
                     if not element.startswith('-'):
                         if element not in possible_ref:
-                            match_result.remove(possible_ref)
+                            index_to_remove.append(index)
                             break
                     else:  # If the element is in the negative form, the reference data should not contain the element
                         if element.lstrip('-') in possible_ref:
-                            match_result.remove(possible_ref)
+                            index_to_remove.append(index)
                             break
+            for index in reversed(index_to_remove):
+                match_result.pop(index)
         if len(match_result) < display_number:
             display_number = len(match_result)
         for possible_ref in match_result[0:display_number]:
