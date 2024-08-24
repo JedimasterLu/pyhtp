@@ -6,13 +6,16 @@ Contact: Lujunyuan@sjtu.edu.cn
 """
 from __future__ import annotations
 import os
+import io
 import ternary
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import cmcrameri
 from matplotlib.animation import FuncAnimation
 from matplotlib.markers import MarkerStyle
 from matplotlib.transforms import Affine2D
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from pyxrd.process import XrdProcess
 from pyxrd.database import XrdDatabase
 
@@ -361,6 +364,7 @@ def plot_ternary_diagram(phase_type: list[str],
     else:
         fig = None
     plt.rcParams['font.family'] = 'Times New Roman'
+    plt.rcParams['font.weight'] = 'bold'
     # Generate the points
     width = _get_width(phase_index)
     points = _get_points_position(width)
@@ -373,20 +377,35 @@ def plot_ternary_diagram(phase_type: list[str],
         current_points = [points[i] for i in range(len(points)) if current_index == phase_index[i]]
         if ' + ' in current_type:
             temp_current_type = current_type
+            print(temp_current_type)
             current_type = current_type.split(' + ')
-            if rotation is not None and temp_current_type in rotation:
-                _ternary_scatter(tax,
-                                 current_points,
-                                 color[current_type[0]],
-                                 color[current_type[1]],
-                                 8,
-                                 rotation[temp_current_type])
+            if len(current_type) == 2:
+                if rotation is not None and temp_current_type in rotation:
+                    _ternary_scatter(tax,
+                                     current_points,
+                                     color[current_type[0]],
+                                     color[current_type[1]],
+                                     8,
+                                     rotation[temp_current_type])
+                else:
+                    _ternary_scatter(tax,
+                                     current_points,
+                                     color[current_type[0]],
+                                     color[current_type[1]],
+                                     8)
             else:
-                _ternary_scatter(tax,
-                                 current_points,
-                                 color[current_type[0]],
-                                 color[current_type[1]],
-                                 8)
+                current_color = [color[phase] for phase in current_type]
+                if rotation is not None and temp_current_type in rotation:
+                    _multi_ternery_scatter(ax,
+                                           current_points,
+                                           current_color,
+                                           8,
+                                           rotation[temp_current_type])
+                else:
+                    _multi_ternery_scatter(ax,
+                                           current_points,
+                                           current_color,
+                                           8)
         else:
             tax.scatter(current_points, color=color[current_type], s=40)
     # Set legends
@@ -394,12 +413,12 @@ def plot_ternary_diagram(phase_type: list[str],
         legend_elements = []
         for label, color_name in color.items():
             legend_elements.append(mpl.lines.Line2D([0], [0], marker='o', color='w', label=label, markerfacecolor=color_name, markersize=15))
-        ax.legend(loc='center left', bbox_to_anchor=(1.1, 0.6), handles=legend_elements, fontsize=20)
+        ax.legend(loc='center left', bbox_to_anchor=(1.1, 0.5), handles=legend_elements, fontsize=16)
     # Set the axis and labels
-    tax.ticks(axis='lbr', linewidth=1.5, multiple=20, fontsize=15, offset=0.04)
-    tax.bottom_axis_label(labels[0], fontsize=24, offset=0.2, fontweight='bold')
-    tax.right_axis_label(labels[1], fontsize=24, offset=0.2, fontweight='bold')
-    tax.left_axis_label(labels[2], fontsize=24, offset=0.2, fontweight='bold')
+    tax.ticks(axis='lbr', linewidth=1, multiple=25, fontsize=12, offset=0.03)
+    tax.bottom_axis_label(labels[0], fontsize=16, offset=0.20, fontweight='bold')
+    tax.right_axis_label(labels[1], fontsize=16, offset=0.20, fontweight='bold')
+    tax.left_axis_label(labels[2], fontsize=16, offset=0.20, fontweight='bold')
     tax.clear_matplotlib_ticks()
     tax.get_axes().axis('off')
     if if_show:
@@ -623,8 +642,8 @@ def _ternary_to_cartesian(point: tuple[float, float, float]) -> tuple[float, flo
     Returns:
         tuple[float, float]: _description_
     '''
-    x = 0.5 * (2 * point[1] + point[2]) / (point[0] + point[1] + point[2]) * 100
-    y = 0.5 * 3 ** 0.5 * point[2] / (point[0] + point[1] + point[2]) * 100 
+    x = 0.5 * (2 * point[0] + point[1]) / (point[0] + point[1] + point[2]) * 100
+    y = 0.5 * 3 ** 0.5 * point[1] / (point[0] + point[1] + point[2]) * 100
     return (x, y)
 
 
@@ -673,3 +692,42 @@ def _distance_between_points(point1: tuple[float, float, float],
     distance = ((point1_cartesian[0] - point2_cartesian[0]) ** 2
                 + (point1_cartesian[1] - point2_cartesian[1]) ** 2) ** 0.5
     return distance
+
+
+def _multi_ternery_scatter(ax,
+                           points: list[tuple[int, int, int]],
+                           color: list[str],
+                           marker_size: int,
+                           rotation: float=0):
+    """Plot scatters with pie markers that has more than 2 colors.
+
+    Args:
+        ax (_type_): _description_
+        points (list[tuple[int, int, int]]): _description_
+        color (list[str]): _description_
+        marker_size (int): _description_
+        rotation (float, optional): _description_. Defaults to 0.
+    """
+    # Convert points to cartisian coordinates
+    points = [_ternary_to_cartesian(point) for point in points]
+
+    # Generate pie image
+    slice_num = len(color)
+    sizes = np.ones(slice_num) / slice_num
+    explode = (0, 0, 0)
+    fig, ax0 = plt.subplots()
+    ax0.pie(sizes, explode=explode, colors=color,
+            autopct='', shadow=False, startangle=rotation)
+    plt.axis('equal')
+    # fig.set_size_inches(marker_size / fig.dpi,
+    #                     marker_size / fig.dpi)
+    # Save a temp figure and read it as image
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', transparent=True)
+    plt.close(fig)
+    buf.seek(0)
+    # Read the image from the bytes buffer
+    pie_image = OffsetImage(plt.imread(buf, format="png"), zoom=marker_size / fig.dpi / 3.3)
+    for point in points:
+        ab = AnnotationBbox(pie_image, point, frameon=False)
+        ax.add_artist(ab)
