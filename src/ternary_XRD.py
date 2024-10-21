@@ -22,7 +22,7 @@ import numpy as np
 import copy
 import src.funda_XRD as fb
 from functools import partial
-from pyxrd.plotter import plot_ternary_diagram, rotate_phase_index, plot_xrd_on_ternary_line
+from pyhtp.xrd.plotter import plot_ternary_diagram, rotate_phase_index, plot_xrd_on_ternary_line
 plt.rc('font',family='Times New Roman')
 
 SMALL_SIZE = 14
@@ -36,9 +36,9 @@ plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 
 ##############################基础变量及路径修改##########################
 # 1. 导入CSV文件（非晶类型）
-top_directory = "data/GeSbSe_XRD/20240106_GeSbSn_100nm_300C_1h"
-csv_file = 'data/GeSbSe_XRD/20240106_GeSbSn_100nm_300C_1h/GeSbSn_300C.xlsx'
-title='GeSbSn_300C' #图片标题名和存储名
+top_directory = "data/SbSeGe_XRD/20240719_SbSeGe_100nm_300C_1h_new"
+csv_file = 'data/SbSeGe_XRD/20240719_SbSeGe_100nm_300C_1h_new/SbSeGe_300C.xlsx'
+title='SbSeGe_300C_new' #图片标题名和存储名
 
 df_peaks = pd.read_excel(csv_file)
 #df_peaks = pd.read_csv(csv_file)
@@ -236,7 +236,7 @@ if title == 'GeSbSn_300C':
     labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
     former = 8
     latter = 8
-    ordered_custom_order[latter] = 'GeSn (Fd-3m)'
+    ordered_custom_order[latter] = 'Ge (Fd-3m)'
     labels, ordered_custom_order = fb.exchange2(labels, former, ordered_custom_order, latter=latter, others='True')
     point_Num = [194,182]
     latter = 8
@@ -315,7 +315,7 @@ if title == 'GeSbSn_300C':
 
     point_Num = [164, 163, 143, 144, 142, 141]
     latter = 6
-    ordered_custom_order.append('GeSn (Fd-3m) + Sn (I4_1/amd)')
+    ordered_custom_order.append('Ge (Fd-3m) + Sn (I4_1/amd)')
     labels, ordered_custom_order = fb.exchange3(labels, point_Num, ordered_custom_order, latter, others='True')
 
     point_Num = [148]
@@ -698,11 +698,11 @@ print('ordered_custom_order:', ordered_custom_order)
 
 ##############################绘图及交互过程##########################
 fig, ax = plt.subplots(figsize = (10, 6))
-heatmap,tax = fb.plot_tri(ax,element3=element3,labels = labels,title= title,terlinenum = terlinenum, ordered_custom_order = ordered_custom_order)
+# heatmap,tax = fb.plot_tri(ax,element3=element3,labels = labels,title= title,terlinenum = terlinenum, ordered_custom_order = ordered_custom_order)
 #heatmap,tax = fb.plot_tri_con(ax,element3='Sn',labels = labels,title='GeSbSn_as',leveldown = 0,levelup = 3.5,terlinenum = terlinenum)
 #tax.show()  # pycharm不支持show，插值连续图，但感觉不好看
 #plt.savefig(save_path+title+'.png',dpi = 600) #保存图的命令
-'''
+
 plot_ternary_diagram(phase_type=ordered_custom_order,
                      phase_index=rotate_phase_index(labels),
                      labels=['Se', 'Ge', 'Sb'],
@@ -727,7 +727,7 @@ plot_ternary_diagram(phase_type=ordered_custom_order,
                          'Sb (R-3m) + SbSe (Pnma)': -90
                      }
                      )
-'''
+
 # 将点击事件绑定到散点图上,创建带有绑定参数的新函数，如果没有相应directory隐去下面部分
 plt.ion()
 on_pick_with_params = partial(fb.on_pick, directory=directory, angle_center=angle_center, r=r, sigma=sigma, window_size=window_size)
@@ -744,9 +744,9 @@ plot_xrd_on_ternary_line(xrd_file_dir=directory,
                          v_margin=0.4, plot_peaks=False, factor=0.1, window=11, lam=100)
 '''
 ##############################绘图及交互过程##########################
-'''
+
 import pickle
 save_data = {'phase_index': labels, 'phase_type': ordered_custom_order}
 with open(f'data/plot/{title}.pkl', 'wb') as f:
     pickle.dump(save_data, f)
-'''
+

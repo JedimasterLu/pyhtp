@@ -837,7 +837,7 @@ def on_pick(event, directory, angle_center, r, sigma, window_size): #图形交�
         ax.set_title('%s'%name)
     fig.show()
     '''
-    from pyxrd import XrdProcess
+    from pyhtp.xrd import XrdProcess
     str_ind = str(ind)
     n = int(3-len(str_ind))
     padded_string = add_zeros(str_ind, n)
@@ -853,7 +853,7 @@ def on_pick(event, directory, angle_center, r, sigma, window_size): #图形交�
         figure_title=f'100 nm-300C-1h-{ind}', 
         display_number=8,
         tolerance=1,
-        elements=['-Se', '-Ge']
+        elements=['-Se']
     )
 
 def add_zeros(string, n): #自动填充零

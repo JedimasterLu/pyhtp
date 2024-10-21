@@ -9,7 +9,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
-from pyxrd.plotter import plot_ternary_diagram, rotate_phase_index
+from pyhtp.xrd.plotter import plot_ternary_diagram, rotate_phase_index
 
 # Load data
 DATADIR = 'data/plot'
