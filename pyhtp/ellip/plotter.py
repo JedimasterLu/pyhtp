@@ -108,13 +108,13 @@ class EllipPlotter:
         # Add labels to the vertices
         for i, txt in enumerate(self.element):
             ax.text(vertices[i, 0], vertices[i, 1], vertices[i, 2],
-                    txt, size=20, color='darkslategray')
+                    txt, size=20, color='darkslategray', fontfamily='Calibri')
         # Set the aspect of the plot
         ax.set_box_aspect([1, 1, 1])
         # Set the limits of the plot
-        ax.set_xlim([-0.35, 0.35])
-        ax.set_ylim([-0.35, 0.35])
-        ax.set_zlim([-0.35, 0.35])
+        ax.set_xlim([-0.4, 0.4])
+        ax.set_ylim([-0.4, 0.4])
+        ax.set_zlim([-0.4, 0.4])
         # Remove cartesian axes
         ax.set_axis_off()
         # Add ticks on the edges
@@ -130,7 +130,7 @@ class EllipPlotter:
         # Convert the tetrahedral coordinates to Cartesian coordinates
         car_coord = np.array([self._tetrahedral_to_cartesian(vertices, c) for c in coord])
         # Set the color of the surface
-        colors = plt.cm.summer(plt.Normalize(value.min(), value.max())(value))  # pylint: disable=all
+        colors = plt.cm.coolwarm(plt.Normalize(value.min(), value.max())(value))  # pylint: disable=all
         # Plot the surface
         ax.plot_surface(X=car_coord[:, 0].reshape(side_num, side_num),
                         Y=car_coord[:, 1].reshape(side_num, side_num),
@@ -139,10 +139,13 @@ class EllipPlotter:
                         rstride=1, cstride=1)
 
         # Plot colorbar and set the value range from value.min() to value.max()
-        sm = plt.cm.ScalarMappable(cmap=plt.cm.summer,
+        sm = plt.cm.ScalarMappable(cmap=plt.cm.coolwarm,
                                    norm=plt.Normalize(value.min(), value.max()))
         sm.set_array([])
         cbar = plt.colorbar(sm, ax=ax, shrink=0.5)
+
+        # Set the font family of cbar ticks
+        plt.setp(plt.getp(cbar.ax.axes, 'yticklabels'), fontfamily='Times New Roman')
 
         # Show the figure
         if if_show:
