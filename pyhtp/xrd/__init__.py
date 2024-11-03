@@ -4,6 +4,8 @@ Package: pyhtp.xrd
 Author: Junyuan Lu
 Contact: Lujunyuan@sjtu.edu.cn
 """
-from pyhtp.xrd.process import XrdProcess
-from pyhtp.xrd.plotter import XrdPlotter, plot_ternary_diagram, plot_xrd_on_ternary_line, rotate_phase_index
-from pyhtp.xrd.database import XrdDatabase
+
+from .icsd import ICSD  # noqa: F401
+from .database import XrdDatabase  # noqa: F401
+from .pattern import XrdPattern  # noqa: F401
+from .infotuple import SampleInfo, PatternInfo, AngleRange, Latticeabc, Latticeangles, IcsdData  # noqa: F401
