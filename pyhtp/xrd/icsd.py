@@ -13,17 +13,18 @@ from matplotlib.axes import Axes
 from pymatgen.analysis.diffraction.xrd import XRDCalculator
 from pymatgen.core.structure import Structure
 from pymatgen.io.cif import CifParser
-from .infotuple import AngleRange, IcsdData, MillerIndice, Latticeabc, Latticeangles
+from ..typing import AngleRange, IcsdData, MillerIndice, Latticeabc, Latticeangles
 
 
 class ICSD:
     ''' A class that generated pattern database and structure database from .cif files.
     '''
-    def __init__(self, file_dir: str):
+    def __init__(self, file_dir: str, if_save: bool = True):
         '''__init__ create a instance of XrdDatabase.
 
         Args:
             file_dir (str): The directory of .cif files.
+            if_save (bool, optional): Whether to save the data to a pickle file. Defaults to True.
         '''
         self._file_dir = file_dir
         self.data: list[IcsdData] = []
@@ -31,9 +32,9 @@ class ICSD:
         if os.path.exists('icsd.pkl'):
             self.data = pickle.load(open('icsd.pkl', 'rb'))
         else:
-            self.process(if_save=True)
+            self.process(if_save=if_save)
 
-    def process(self, if_save: bool=True):
+    def process(self, if_save: bool = True):
         '''process generate pattern database and structure database from .cif files.
         '''
         cif_files = os.listdir(self._file_dir)
@@ -41,7 +42,7 @@ class ICSD:
         for file_name in cif_files:
             if file_name.split('.')[-1] != 'cif':
                 continue
-            file_path = self._file_dir + file_name
+            file_path = os.path.join(self._file_dir, file_name)
             parser = CifParser(file_path)
             cif_data = parser.as_dict()
             # Because the initial key is a long string, we need to get the first key.
@@ -51,12 +52,11 @@ class ICSD:
             structure = Structure.from_file(file_path, primitive=False, merge_tol=0.01)
             xrd = XRDCalculator(wavelength='CuKa')
             pattern = xrd.get_pattern(structure)
-            # pattern = pattern.as_dict()
             icsd_data = {
                 'name': file_name,
                 'two_theta': pattern.x,
                 'intensity': pattern.y,
-                'hkl': [MillerIndice(*hkls['hkl'])
+                'hkl': [MillerIndice(hkls[0]['hkl'][0], hkls[0]['hkl'][1], hkls[0]['hkl'][-1])
                         for hkls in pattern.hkls],
                 'space_group': cif_data['_space_group_name_H-M_alt'],
                 'space_group_number': int(cif_data['_space_group_IT_number']),
@@ -75,14 +75,15 @@ class ICSD:
             data.append(icsd_data)
         self.data = data
         if if_save:
-            pickle.dump(self.data, open('icsd.pkl', 'wb'))
+            save_path = os.path.join(self._file_dir, 'icsd.pkl')
+            pickle.dump(self.data, open(save_path, 'wb'))
 
     def index(self,
-              file_name: Optional[str]=None,
-              icsd_code: Optional[int]=None,
-              space_group: Optional[str]=None,
-              space_group_number: Optional[int]=None,
-              element: Optional[list[str]]=None) -> list[int]:
+              file_name: Optional[str] = None,
+              icsd_code: Optional[int] = None,
+              space_group: Optional[str] = None,
+              space_group_number: Optional[int] = None,
+              element: Optional[list[str]] = None) -> list[int]:
         """Get the index from the data in database.
 
         Args:
@@ -114,9 +115,11 @@ class ICSD:
                     if e.startswith('-') and e[1:] in data.formula:
                         add_flag = False
                         break
-                    if not e.startswith('-') and e not in data.formula:
+                    if e.startswith('+') and e not in data.formula:
                         add_flag = False
                         break
+                    elif e in data.formula:
+                        add_flag = True
                 if not add_flag:
                     continue
             result_index.append(i)
@@ -136,11 +139,11 @@ class ICSD:
         return [self.data[i].icsd_code for i in self.index(**kwargs)]
 
     def plot(self,
-             angle_range: Optional[AngleRange]=None,
-             ax: Optional[Axes]=None,
-             if_show: bool=True,
-             cmap: str='tab10',
-             color: Union[str, tuple[float, float, float, float]]='b',
+             angle_range: Optional[AngleRange] = None,
+             ax: Optional[Axes] = None,
+             if_show: bool = True,
+             cmap: str = 'tab10',
+             color: Union[str, tuple[float, float, float, float]] = 'b',
              **kwargs) -> Axes:
         """Plot the diffraction pattern of cif file.
 
@@ -167,21 +170,25 @@ class ICSD:
             raise ValueError('The ax is not correctly set!')
         colormap = plt.cm.get_cmap(cmap)
         for i in index:
+            two_theta = [angle for angle in self.data[i].two_theta
+                         if angle_range.left <= angle <= angle_range.right]
+            intensity = [intensity for angle, intensity in zip(self.data[i].two_theta, self.data[i].intensity)
+                         if angle_range.left <= angle <= angle_range.right]
             if len(index) > 1:
                 # If there are multiple data, we use the colormap.
-                ax.vlines(self.data[i].two_theta, 0,
-                          self.data[i].intensity,
-                          color=colormap(i % 10), linewidth=1)
+                ax.vlines(two_theta, 0, intensity,
+                          color=colormap(i % 10), linewidth=2)
             else:
                 # If there is only one data, we use the color parameter, with text.
-                ax.vlines(self.data[i].two_theta, 0,
-                          self.data[i].intensity,
-                          color=color, linewidth=1)
-                ax.text(0.5, 0.5, f'{self.data[i].formula}-{self.data[i]}', transform=ax.transAxes)
+                ax.vlines(two_theta, 0, intensity,
+                          color=color, linewidth=2)
+                ax.text(0.7, 0.8, f'{self.data[i].formula}-{self.data[i].icsd_code}',
+                        transform=ax.transAxes, color=color)
                 # Also add text indicate the miller indexs on each vline.
                 for j, hkl in enumerate(self.data[i].hkl):
-                    ax.text(self.data[i].two_theta[j], self.data[i].intensity[j],
-                            f'({hkl.h} {hkl.k} {hkl.l})', fontsize=8, rotation=90, color=color)
+                    if angle_range.left <= self.data[i].two_theta[j] <= angle_range.right:
+                        ax.text(self.data[i].two_theta[j], self.data[i].intensity[j],
+                                f'({hkl.h} {hkl.k} {hkl.l})', fontsize=7, rotation=90, color=color)
         ax.set_xlim(angle_range.left, angle_range.right)
         if if_show:
             plt.show()

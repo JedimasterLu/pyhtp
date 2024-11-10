@@ -3,32 +3,49 @@
 Define a class to read file and store ellipsometry data.
 """
 import re
-import os
-from typing import Literal
+from typing import Literal, Union
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
+from pandas import DataFrame
+from ..typing import SampleInfo
 
 
 class EllipDatabase:
     """A class to read file and store ellipsometry data."""
-    def __init__(self, file_path: str | list[str]):
+    def __init__(
+            self,
+            file_path: Union[str, tuple[str, str]],  # type: ignore
+            info: SampleInfo):
         """Initialize the class from a xlsx or csv file of the sample.
 
         Args:
             file_dir (str | list[str]): The path of the file. Input 2 files to calculate FOM.
+            info (SampleInfo): The information of the sample.
+
+        Raises:
+            ValueError: Please input the film thickness of the sample.
         """
         self.file_path = file_path
         if isinstance(file_path, str):
-            file_path = [file_path]
-        self.data = {}
-        for p in file_path:
-            data_ini = self._read_file(p)
-            p = os.path.basename(p)
-            p = p.split('.')[0]
-            self.data[p] = data_ini
+            file_path: list[str] = [file_path]
+        if isinstance(file_path, tuple):
+            file_path: list[str] = list(file_path)
+        self.data: dict[str, DataFrame] = {}
+        for index, p in enumerate(file_path):
+            if index == 0:
+                key = 'amorphous'
+            elif index == 1:
+                key = 'crystalline'
+            else:
+                raise ValueError("Input up to 2 files to calculate FOM.")
+            self.data[key] = self._read_file(p)
         self.wavelength = self.get_wavelength()
+        if info.film_thickness is None:
+            raise ValueError("Please input the film thickness of the sample.")
+        self.info = info
 
-    def _read_file(self, file_path: str) -> pd.DataFrame:
+    def _read_file(self, file_path: str) -> DataFrame:
         """Read the xlsx or csv file of the sample.
 
         Args:
@@ -41,7 +58,7 @@ class EllipDatabase:
         # Process the Dataframe to change its columns to a standard form
         pattern = r"([nk]) of B-Spline @ (\d+)\.\d+ nm vs. Position"
         finded_index = []
-        columns = data_ini.columns.values
+        columns: list[str] = data_ini.columns.values.tolist()
         # Change the columns with n/k and wavelength
         for index, column in enumerate(columns):
             # maches = [[n/k, wavelength]]
@@ -66,9 +83,9 @@ class EllipDatabase:
 
     def copy(self):
         """Return a copy of the class."""
-        return EllipDatabase(self.file_path)
+        return EllipDatabase(self.file_path, self.info)
 
-    def get_param(self, param: Literal['n', 'k'], wavelength: int) -> np.ndarray:
+    def get_data(self, param: Literal['n', 'k'], wavelength: int) -> NDArray:
         """Return the n/k data of the sample at a specific wavelength.
 
         Args:
@@ -76,7 +93,7 @@ class EllipDatabase:
             wavelength (int): The wavelength of the data.
 
         Returns:
-            np.ndarray: The n/k data of the sample at a specific wavelength.
+            NDArray: The n/k data of the sample at a specific wavelength.
         """
         column = f"{param}_{wavelength}_z"
         result = []
@@ -85,19 +102,19 @@ class EllipDatabase:
         result = np.array(result).squeeze()
         return result
 
-    def get_fom(self, wavelength: int) -> np.ndarray:
+    def get_fom(self, wavelength: int) -> NDArray:
         """Return the figure of merit of the sample at a specific wavelength.
 
         Args:
             wavelength (int): The wavelength of the data.
 
         Returns:
-            np.ndarray: The figure of merit of the sample at a specific wavelength.
+            NDArray: The figure of merit of the sample at a specific wavelength.
         """
         if len(self.data) != 2:
             raise ValueError("Input 2 files to calculate FOM.")
-        ns = self.get_param('n', wavelength)
-        ks = self.get_param('k', wavelength)
+        ns = self.get_data('n', wavelength)
+        ks = self.get_data('k', wavelength)
         return np.abs(ns[0] - ns[1]) / (ks[0] + ks[1])
 
     def get_len(self) -> int:
@@ -108,10 +125,40 @@ class EllipDatabase:
         """Return the number of files in the database."""
         return len(self.data)
 
-    def get_wavelength(self) -> np.ndarray:
+    def get_wavelength(self) -> NDArray:
         """Return the wavelength of the data."""
         wavelength = np.array([int(column.split('_')[1])
                                for column in self.data[list(self.data.keys())[0]].columns])
         # Remove repeated wavelength
         wavelength = np.unique(wavelength)
         return wavelength
+
+    def get_alpha(self, wavelength: float) -> NDArray:
+        """Return the absorption coefficient of the sample at a specific wavelength.
+
+        Args:
+            wavelength (float): The wavelength of the data.
+
+        Returns:
+            NDArray: The absorption coefficient of the sample at a specific wavelength.
+        """
+        ks = self.get_data('k', int(wavelength))
+        return 4 * np.pi * ks / wavelength
+
+
+def tauc_plot(k, wavelength):
+    """_summary_
+
+    Args:
+        alpha (_type_): _description_
+        wavelength (_type_): _description_
+    """
+    alpha = 4 * np.pi * k / wavelength
+    import matplotlib.pyplot as plt
+    plank = 6.62607015e-34
+    c = 3e8
+    nu = c / (wavelength * 1e-9)
+    hnu = plank * nu
+    ahnu = alpha * hnu
+    plt.plot(hnu, ahnu, 'o')
+

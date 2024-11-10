@@ -4,4 +4,4 @@ Package: pyhtp.ternary
 Author: Junyuan Lu
 Contact: Lujunyuan@sjtu.edu.cn
 """
-from .scatter import plot_ternary, plot_xrd_on_ternary_line, rotate_data  # noqa: F401
+from .scatter import scatter_ternary, pattern_on_ternary_line, rotate_data  # noqa: F401

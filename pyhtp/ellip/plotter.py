@@ -61,7 +61,7 @@ class EllipPlotter:
             if len(index) != 1:
                 raise ValueError("One of the files should have 'as' in the name.")
             index = index[0]
-            value = self.database.get_param(param, wavelength)[index]
+            value = self.database.get_data(param, wavelength)[index]
         elif self.database.get_file_num() == 2 and structure_type == 'crystalline' and param in ['n', 'k']:
             file_name = self.database.data.keys()
             # Find the index of the file with no 'as' in the name
@@ -69,12 +69,12 @@ class EllipPlotter:
             if len(index) != 1:
                 raise ValueError("One of the files should have 'as' in the name.")
             index = index[0]
-            value = self.database.get_param(param, wavelength)[index]
+            value = self.database.get_data(param, wavelength)[index]
         elif param == 'fom':
             value = self.database.get_fom(wavelength)
         else:
             # Only 1 file, structure_type is invalid, get the file directly
-            value = self.database.get_param(param, wavelength)
+            value = self.database.get_data(param, wavelength)
         # The number of points in each side
         side_num = int(np.sqrt(self.database.get_len()))
         value = value.reshape(side_num, side_num).astype(float)

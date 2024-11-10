@@ -2,12 +2,15 @@
 """
 A class that contains diffraction patterns of a high-throughput sample.
 """
+from __future__ import annotations
 import os
 from typing import Union, Optional, Literal
 import numpy as np
 import matplotlib.pyplot as plt
+from numpy.typing import NDArray
 from matplotlib.axes import Axes
-from .infotuple import SampleInfo, PatternInfo, AngleRange
+from mpl_toolkits.mplot3d import Axes3D
+from ..typing import SampleInfo, AngleRange, PatternInfo
 from .pattern import XrdPattern
 from .icsd import ICSD
 
@@ -16,34 +19,49 @@ class XrdDatabase:
     """A class that contains diffraction patterns of a high-throughput sample.
     """
     def __init__(self,
-                 file_dir: Union[str, list[str]],
-                 info: SampleInfo):
-        """Create a instance of XrdDatabase.
+                 info: SampleInfo,
+                 file_dir: Optional[Union[str, list[str]]] = None,
+                 data: Optional[list[XrdPattern]] = None):
+        """Initialize the XrdDatabase.
 
         Args:
             file_dir (Union[str, list[str]]): The directory of the database. Input a list if there are multiple scan angles.
+            info (SampleInfo): The information of the sample.
+
+        Raises:
+            ValueError: The length of file_path and scan_angle should be the same!
+            ValueError: The scan_angle should be set for XRD sample!
         """
-        # Check the input
-        if isinstance(file_dir, str) and isinstance(info.angle_range, list):
-            raise ValueError('The length of file_path and scan_angle should be the same!')
-        if isinstance(file_dir, list) and not isinstance(info.angle_range, list):
-            raise ValueError('The length of file_path and scan_angle should be the same!')
-        if isinstance(file_dir, list) and isinstance(info.angle_range, list):
-            if len(file_dir) != len(info.angle_range):
+        if file_dir and data is None:
+            # Check the input
+            if isinstance(file_dir, str) and isinstance(info.angle_range, list):
                 raise ValueError('The length of file_path and scan_angle should be the same!')
-        # Assign the attributes
-        if isinstance(file_dir, str):
-            file_dir = [file_dir]
-        self.data = self._read_data(file_dir, info)
-        # Change the angle range of self.info to a tuple if it is a list
-        if isinstance(info.angle_range, list):
-            self.info = SampleInfo(
-                name=info.name, element=info.element,
-                temperature=info.temperature,
-                angle_range=AngleRange(info.angle_range[0].left, info.angle_range[-1].right),
-                description=info.description)
+            if isinstance(file_dir, list) and not isinstance(info.angle_range, list):
+                raise ValueError('The length of file_path and scan_angle should be the same!')
+            if isinstance(file_dir, list) and isinstance(info.angle_range, list):
+                if len(file_dir) != len(info.angle_range):
+                    raise ValueError('The length of file_path and scan_angle should be the same!')
+            if info.angle_range is None:
+                raise ValueError('The scan_angle should be set for XRD sample!')
+            self._file_dir = file_dir
+            # Assign the attributes
+            if isinstance(file_dir, str):
+                file_dir = [file_dir]
+            self.data = self._read_data(file_dir, info)
+            # Change the angle range of self.info to a tuple if it is a list
+            if isinstance(info.angle_range, list):
+                self.info = info._replace(angle_range=AngleRange(info.angle_range[0].left, info.angle_range[-1].right))
+            else:
+                self.info = info
+        elif data and not file_dir:
+            self.data = data
+            # Change the angle range of self.info to a tuple if it is a list
+            if isinstance(info.angle_range, list):
+                self.info = info._replace(angle_range=AngleRange(info.angle_range[0].left, info.angle_range[-1].right))
+            else:
+                self.info = info
         else:
-            self.info = info
+            raise ValueError('Either file_dir or data should be set!')
 
     def _read_data(self, file_dir: list[str], info: SampleInfo) -> list[XrdPattern]:
         """Read the data from the file directory.
@@ -54,6 +72,7 @@ class XrdDatabase:
         Raises:
             FileNotFoundError: The directory is not found!
             ValueError: The number of files in the directories are not the same!
+            ValueError: The scan_angle should be set for XRD sample!
 
         Returns:
             list[XrdPattern]: The list of XrdPattern.
@@ -72,7 +91,7 @@ class XrdDatabase:
                 index (int): The index of the pattern.
 
             Returns:
-                tuple[np.ndarray, np.ndarray]: The (two_theta, intensity) of the xrd data.
+                XrdPattern: The XrdPattern object.
             '''
             # Read the file into a List[str] and pop the first line
             with open(file_path, 'r', encoding='utf-8') as file:
@@ -133,6 +152,8 @@ class XrdDatabase:
                 temperature=info.temperature)
             return XrdPattern(two_theta=two_theta, intensity=intensity, info=new_info)
 
+        if info.angle_range is None:
+            raise ValueError('The scan_angle should be set for XRD sample!')
         # Read the data
         data: list[XrdPattern] = []
         for i, path in enumerate(file_dir):
@@ -154,14 +175,51 @@ class XrdDatabase:
                     data[j] = _combine_xy(info, data[j], pattern)
         return data
 
-    def plot(self,
-             index: Optional[list[int]]=None,
-             style: Literal['combine', 'stack']='combine',
-             dpi: int=600,
-             save_path: Optional[str]=None,
-             ax: Optional[Axes]=None,
-             amorphous_index: int=-1,
-             **kwargs) -> Axes:
+    def copy(self) -> XrdDatabase:
+        """Copy the XrdDatabase object.
+
+        Returns:
+            XrdDatabase: The copied XrdDatabase object.
+        """
+        return XrdDatabase(data=self.data, info=self.info)
+
+    def subtract_baseline(self, lam: int = 200) -> XrdDatabase:
+        """Subtract the baseline of the diffraction patterns.
+
+        Args:
+            lam (int, optional): Subtract parameter. Defaults to 200.
+
+        Returns:
+            XrdDatabase: The XrdDatabase object.
+        """
+        for index, pattern in enumerate(self.data):
+            self.data[index] = pattern.subtract_baseline(lam=lam)
+        return self
+
+    def smooth(self, window: int = 101, factor: float = 0.5) -> XrdDatabase:
+        """Smooth the diffraction patterns.
+
+        Args:
+            window (int, optional): The window size of the smoothing. Defaults to 101.
+            factor (float, optional): The factor of the smoothing. Defaults to 0.5.
+
+        Returns:
+            XrdDatabase: The XrdDatabase object.
+        """
+        new_db = self.copy()
+        for index, pattern in enumerate(new_db.data):
+            new_db.data[index] = pattern.smooth(window=window, factor=factor)
+        return new_db
+
+    def plot(
+            self,
+            index: Optional[list[int]] = None,
+            style: Literal['combine', 'stack'] = 'combine',
+            dpi: int = 600,
+            save_path: Optional[str] = None,
+            ax: Optional[Axes] = None,
+            amorphous_index: int = -1,
+            **kwargs):
         """Plot the diffraction patterns.
 
         Args:
@@ -172,26 +230,24 @@ class XrdDatabase:
             ax (Optional[Axes], optional): The axes to plot. Defaults to None.
             amorphous_index (int, optional): The index of a reference amorphous pattern. If set, intensities will be subtracted by the reference. Defaults to -1.
             **kwargs: Other arguments for post-processing and plotting.
-
-        Returns:
-            Axes: The axes of the plot.
         """
         # Process the pattern to be plot
         if index is None:
             index = list(range(len(self.data)))
         # Select the patterns to plot
         patterns = [self.data[i] for i in index]
-        peak: list[tuple] = []
+        peaks: list[tuple] = []
         # Process the patterns with kwargs given
-        for pattern in patterns:
+        for i, pattern in enumerate(patterns):
             if amorphous_index >= 0:
-                pattern.intensity = pattern.intensity - self.data[amorphous_index].intensity
+                patterns[i].intensity = patterns[i].intensity - self.data[amorphous_index].intensity
             if 'lam' in kwargs:
-                pattern = pattern.subtract_baseline(lam=kwargs['lam'])
+                patterns[i] = patterns[i].subtract_baseline(lam=kwargs['lam'])
             if 'window' in kwargs or 'factor' in kwargs:
-                pattern = pattern.smooth(window=kwargs.get('window', 101),
-                                         factor=kwargs.get('factor', 0.5))
-            peak.append(
+                patterns[i] = patterns[i].smooth(
+                    window=kwargs.get('window', 101),
+                    factor=kwargs.get('factor', 0.5))
+            peaks.append(
                 pattern.get_peak(mask=kwargs.get('mask', None),
                                  height=kwargs.get('height', -1),
                                  mask_height=kwargs.get('mask_height', -1)))
@@ -201,25 +257,25 @@ class XrdDatabase:
             fig, ax = plt.subplots()
         if ax is None:
             raise ValueError('The ax is not correctly set!')
+        cmap = plt.cm.get_cmap(kwargs.get('cmap', 'viridis'))
         if style == 'combine':
             for i, pattern in enumerate(patterns):
-                cmap = plt.cm.get_cmap(kwargs.get('cmap', 'viridis'))
-                pattern.plot(ax=ax, color=cmap(i / len(patterns)))
+                pattern.plot(ax=ax, color=cmap(i / len(patterns)),
+                             if_label=False, alpha=0.8)
         if style == 'stack':
             # Get the margin from the maximum intensity variation of the patterns
             margin = max(pattern.intensity.max() - pattern.intensity.min() for pattern in patterns)
-            for i, pattern in enumerate(patterns):
-                cmap = plt.cm.get_cmap(kwargs.get('cmap', 'viridis'))
-                pattern.plot(ax=ax, color=cmap(i / len(patterns)), offset=i * margin, alpha=0.8)
-                ax.scatter(pattern.two_theta[peak[i]],
-                           pattern.intensity[peak[i]] + i * margin,
+            for i, (pattern, peak) in enumerate(zip(patterns, peaks)):
+                pattern.plot(ax=ax, color=cmap(i / len(patterns)),
+                             offset=i * margin, alpha=0.8, if_label=False)
+                ax.scatter(pattern.two_theta[peak[0]],
+                           pattern.intensity[peak[0]] + i * margin,
                            color=cmap(i / len(patterns)), s=10, marker='x')
                 ax.text(0.5, i * margin + margin * 0.3, f'No. {pattern.info.index}',
                         fontsize=10, color=cmap(i / len(patterns)))
         # Save the figure
         if save_path and fig:
             fig.savefig(save_path, dpi=dpi)
-        return ax
 
     def plot_with_icsd(self,
                        icsd: ICSD,
@@ -240,12 +296,149 @@ class XrdDatabase:
         icsd_data = [icsd.data[icsd.index(icsd_code=c)[0]]
                      for c in code]
         # Plot the sample patterns
-        fig, axs = plt.subplots(1 + len(icsd_data), 1, figsize=(4, 1 * (1 + len(icsd_data))))
+        fig, axs = plt.subplots(1 + len(icsd_data), 1, figsize=(6, 2 * (1 + len(icsd_data))))
         self.plot(ax=axs[0], **kwargs)
         # Get the xlim
         xlim = axs[0].get_xlim()
         # Plot the icsd patterns
         cmap = plt.cm.get_cmap(kwargs.get('cmap', 'tab10'))
         for i, c in enumerate(code):
-            icsd.plot(ax=axs[i + 1], color=cmap(i), icsd_code=c, angle_range=AngleRange(*xlim))
+            axs[i + 1] = icsd.plot(ax=axs[i + 1], color=cmap(i), icsd_code=c,
+                                   angle_range=AngleRange(*xlim))
         fig.show()
+
+    def plot_surf(
+            self,
+            index: Optional[list[int]] = None,
+            dpi: int = 600,
+            save_path: Optional[str] = None,
+            ax: Optional[Axes3D] = None,
+            amorphous_index: int = -1,
+            **kwargs):
+        """Plot the diffraction patterns in 3D surface.
+
+        Args:
+            index (Optional[list[int]], optional): Index to plot. Defaults to None.
+            dpi (int, optional): Save fig dpi. Defaults to 600.
+            save_path (Optional[str], optional): Save path. Defaults to None.
+            ax (Optional[Axes3D], optional): matplotlib axis. Defaults to None.
+            amorphous_index (int, optional): If set, subtract baseline based on a reference point. Defaults to -1.
+
+        Raises:
+            ValueError: The ax is not correctly set!
+        """
+        # Process the pattern to be plot
+        if index is None:
+            index = list(range(len(self.data)))
+        # Select the patterns to plot
+        patterns = [self.data[i] for i in index]
+        peaks: list[tuple] = []
+        # Process the patterns with kwargs given
+        for i, pattern in enumerate(patterns):
+            if amorphous_index >= 0:
+                patterns[i].intensity = patterns[i].intensity - self.data[amorphous_index].intensity
+            if 'lam' in kwargs:
+                patterns[i] = patterns[i].subtract_baseline(lam=kwargs['lam'])
+            if 'window' in kwargs or 'factor' in kwargs:
+                patterns[i] = patterns[i].smooth(
+                    window=kwargs.get('window', 101),
+                    factor=kwargs.get('factor', 0.5))
+            peaks.append(
+                pattern.get_peak(mask=kwargs.get('mask', None),
+                                 height=kwargs.get('height', -1),
+                                 mask_height=kwargs.get('mask_height', -1)))
+        # Plot the patterns
+        fig = None
+        if ax is None:
+            fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+            fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
+        if ax is None:
+            raise ValueError('The ax is not correctly set!')
+        cmap = plt.cm.get_cmap(kwargs.get('cmap', 'viridis'))
+        # Convert all the intensity data into a surface
+        x = np.array(patterns[0].two_theta)
+        y = np.arange(len(patterns))
+        X, Y = np.meshgrid(x, y)  # pylint: disable=invalid-name
+        min_length = min(len(pattern.intensity) for pattern in patterns)
+        Z = np.array([pattern.intensity[:min_length] for pattern in patterns])
+        # Plot the surface
+        ax.plot_surface(X, Y, Z, cmap=cmap)
+        # Save the figure
+        if save_path and fig:
+            fig.savefig(save_path, dpi=dpi)
+
+    def classify(
+            self,
+            k_range: tuple[int, int] = (3, 10),
+            full_run: bool = False,
+            **kwargs) -> NDArray:
+        """_summary_
+
+        Args:
+            k_range (tuple[int, int], optional): n_cluster range. Defaults to (3, 10).
+            full_run (bool, optional): If set, run the full range of k. Defaults to False.
+            **kwargs: Other arguments for subtract and smooth and verbose.
+
+        Raises:
+            ValueError: The clustering is not successful!
+
+        Returns:
+            NDArray: The clustering label.
+        """
+        # Import the KMeans and silhouette_score
+        os.environ["OMP_NUM_THREADS"] = '2'
+        from sklearn.cluster import KMeans  # pylint: disable=import-outside-toplevel
+        from sklearn.metrics import silhouette_score  # pylint: disable=import-outside-toplevel
+        # Copy the database
+        db = self.copy()
+        # Process the patterns with kwargs given
+        if 'lam' in kwargs:
+            db = db.subtract_baseline(lam=kwargs['lam'])
+        if 'window' in kwargs or 'factor' in kwargs:
+            db = db.smooth(window=kwargs.get('window', 101),
+                           factor=kwargs.get('factor', 0.5))
+        # Get the peak of the patterns
+        peak_data = []
+        for pattern in db.data:
+            _, properties = pattern.get_peak(
+                mask=kwargs.get('mask', None),
+                height=kwargs.get('height', -1),
+                mask_height=kwargs.get('mask_height', -1))
+            peak_data.append(properties['peak_angles'])
+        # The length of elements in peak_data are not the same
+        # fill the missing elements with 0
+        max_len = max(len(i) for i in peak_data)
+        for i, data in enumerate(peak_data):
+            peak_num = len(data)
+            peak_data[i] = np.pad(data, (0, max_len - len(data)))
+            # Add the number of peaks as the first column
+            peak_data[i] = np.insert(peak_data[i], 0, peak_num)
+        peak_data = np.array(peak_data)
+        print(f'Peak numbers: {np.unique(peak_data[:, 0])}')
+        # KMeans clustering
+        print("K-means clustering ...")
+        result = None
+        last_result = None
+        score = -1
+        last_score = -1
+        all_result = []
+        all_score = []
+        for k in range(*k_range):
+            result = KMeans(
+                n_clusters=k,
+                random_state=0,
+                verbose=kwargs.get('verbose', 1)).fit_predict(peak_data)
+            score = silhouette_score(peak_data, result)
+            all_score.append(score)
+            all_result.append(result)
+            if score < last_score and not full_run:
+                result = last_result
+                break
+            last_result = result
+            last_score = score
+        if full_run:
+            result = all_result[all_score.index(max(all_score))]
+        if result is None:
+            raise ValueError('The clustering is not successful!')
+        print(f'Classification with {k - 1} clusters, silhouette score: {score:.2f}')
+        return result

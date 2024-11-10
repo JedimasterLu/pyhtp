@@ -3,9 +3,10 @@
 Define the scatter plot for ternary phase diagram.
 '''
 import io
-from typing import Optional
+from typing import Optional, Literal
 import numpy as np
 import matplotlib.pyplot as plt
+from numpy.typing import NDArray
 from matplotlib.lines import Line2D
 from matplotlib.axes import Axes
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
@@ -15,7 +16,7 @@ from ternary import TernaryAxesSubplot
 from pyhtp.xrd import XrdDatabase
 
 
-def _ternary_to_cartesian(point: tuple[float, float, float]) -> tuple[float, float]:
+def _ter_to_car(point: tuple[float, float, float]) -> tuple[float, float]:
     '''This function converts the ternary coordinates to cartesian coordinates.
 
     Args:
@@ -29,14 +30,17 @@ def _ternary_to_cartesian(point: tuple[float, float, float]) -> tuple[float, flo
     return (x, y)
 
 
-def _get_points_position(width: int) -> list[tuple[int, int, int]]:
+def _get_points_position(
+        width: int,
+        path_type: Literal['normal', 'snakelike'] = 'normal') -> list[tuple[float, float, float]]:
     '''_get_points_position returns the position of points in ternary diagram.
 
     Args:
         points_number (int): The number of points in the diagram.
+        path_type (Literal['normal', 'snakelike']): The path type of the diagram.
 
     Returns:
-        list[tuple[int, int, int]]: The position of points in the diagram. In snake form from bottom to top.
+        list[tuple[float, float, float]]: The position of points in the diagram. In snake form from bottom to top.
     '''
     # Generate the points, each point position is defined by a tuple contaning 3 int
     points = []
@@ -51,7 +55,7 @@ def _get_points_position(width: int) -> list[tuple[int, int, int]]:
             middle = (width - row) // 2
         y = row * margin
         middle_value = 50 - y / 2
-        # if the row is even, left to right; if odd, right to left
+        # Generate the points in that row
         if row % 2 == 0:
             for column in range(width - row):
                 if (width - row) % 2 != 0:
@@ -60,8 +64,20 @@ def _get_points_position(width: int) -> list[tuple[int, int, int]]:
                     x = middle_value - (middle - column) * margin - margin / 2
                 z = 100 - x - y
                 points.append((x, y, z))
-        else:
+        elif row % 2 != 0 and path_type == 'snakelike':
+            # if the row is even, left to right; if odd, right to left
             for column in range(width - row - 1, -1, -1):
+                if (width - row) % 2 != 0:
+                    x = middle_value - (middle - column) * margin
+                else:
+                    if column < middle:
+                        x = middle_value - (middle - column) * margin + margin / 2
+                    else:
+                        x = middle_value - (middle - column) * margin - margin / 2
+                z = 100 - x - y
+                points.append((x, y, z))
+        else:
+            for column in range(width - row):
                 if (width - row) % 2 != 0:
                     x = middle_value - (middle - column) * margin
                 else:
@@ -116,18 +132,23 @@ def _get_width(index: list) -> int:
     return width
 
 
-def plot_ternary(data: list[str],
-                 color: dict[str, str],
-                 labels: tuple[str, str, str],
-                 rotation: Optional[dict[str, float]]=None,
-                 ax: Optional[Axes]=None) -> TernaryAxesSubplot:
+def scatter_ternary(
+        value: list[str],  # type: ignore
+        color: dict[str, str],
+        label: tuple[str, str, str],
+        coord: Optional[list[tuple[float, float, float]]] = None,  # type: ignore
+        rotation: Optional[dict[str, float]] = None,
+        path_type: Literal['normal', 'snakelike'] = 'normal',
+        ax: Optional[Axes] = None) -> TernaryAxesSubplot:
     """Plot the ternary diagram with given data
 
     Args:
         data (list[str]): The data of each points.
         color (dict[str, str]): Color for each structure.
-        labels (tuple[str, str, str]): Labels of the three axis.
+        label (tuple[str, str, str]): Labels of the three axis.
+        coord (Optional[list[tuple[float, float, float]]], optional): The coordinates of each point. Defaults to None.
         rotation (Optional[dict[str, float]], optional): Rotation for each class. Defaults to None.
+        path_type (Literal['normal', 'snakelike'], optional): The path type. Defaults to 'normal'.
         ax (Optional[Axes], optional): The axis. Defaults to None.
 
     Returns:
@@ -135,7 +156,7 @@ def plot_ternary(data: list[str],
     """
     def _bi_scatter(
             tax: TernaryAxesSubplot,
-            points: list[tuple[int, int, int]],
+            points: list[tuple[float, float, float]],
             left_color: str,
             right_color: str,
             marker_size: int,
@@ -153,13 +174,13 @@ def plot_ternary(data: list[str],
 
     def _multi_scatter(
             ax: Axes,
-            points: list[tuple[int, int, int]],
+            points: list[tuple[float, float, float]],
             color: list[str],
             marker_size: int,
             rotation: float=0) -> None:
         """Plot scatters with pie markers that has more than 2 colors"""
         # Convert points to cartisian coordinates
-        car_points = [_ternary_to_cartesian(point) for point in points]
+        car_points = [_ter_to_car(point) for point in points]
 
         # Generate pie image
         slice_num = len(color)
@@ -187,41 +208,41 @@ def plot_ternary(data: list[str],
         _, ax = plt.subplots(figsize=(6, 5))
     if ax is None:
         raise ValueError('The ax is not correctly defined!')
-    coordinates = _get_points_position(_get_width(data))
+    if coord is None:
+        coord: list[tuple[float, float, float]] = \
+            _get_points_position(_get_width(value), path_type)
+    # If snake like, modify the data
+    value: NDArray = np.array(value)
+    # Set the axis
     tax = TernaryAxesSubplot(ax=ax, scale=100)
     # Plot the scatter of each phase
-    for phase in list(set(data)):
-        coo = [coordinates[i] for i in range(len(data)) if data[i] == phase]
+    for phase in list(set(value)):
+        coo = [coord[i] for i in range(len(value)) if value[i] == phase]
         if '+' in phase:
             sep_phase: list[str] = phase.split('+')
             sep_phase = [i.strip() for i in sep_phase]
-            if len(phase) == 2:
-                if rotation is not None and phase in rotation:
-                    rot = rotation[phase]
-                else:
-                    rot = 0
+            rot = 0
+            if rotation is not None and phase in rotation:
+                rot = rotation[phase]
+            if len(sep_phase) == 2:
                 _bi_scatter(tax, coo, color[sep_phase[0]], color[sep_phase[1]], 8, rot)
-            if len(phase) > 2:
+            if len(sep_phase) > 2:
                 current_color = [color[phase] for phase in phase]
-                if rotation is not None and phase in rotation:
-                    rot = rotation[phase]
-                else:
-                    rot = 0
                 _multi_scatter(ax, coo, current_color, 8, rot)
         else:
             tax.scatter(coo, color=color[phase], s=40)
     # Set legends
     legend_elements = []
-    for label, color_name in color.items():
+    for lab, color_name in color.items():
         legend_elements.append(Line2D([0], [0], marker='o', color='w',
-                                      label=label, markerfacecolor=color_name,
+                                      label=lab, markerfacecolor=color_name,
                                       markersize=15))
     ax.legend(loc='center left', bbox_to_anchor=(1.1, 0.5), handles=legend_elements, fontsize=16)
     # Set the axis and labels
     tax.ticks(axis='lbr', linewidth=1, multiple=25, fontsize=12, offset=0.03)
-    tax.bottom_axis_label(labels[0], fontsize=16, offset=0.20, fontweight='bold')
-    tax.right_axis_label(labels[1], fontsize=16, offset=0.20, fontweight='bold')
-    tax.left_axis_label(labels[2], fontsize=16, offset=0.20, fontweight='bold')
+    tax.bottom_axis_label(label[0], fontsize=16, offset=0.20, fontweight='bold')
+    tax.right_axis_label(label[1], fontsize=16, offset=0.20, fontweight='bold')
+    tax.left_axis_label(label[2], fontsize=16, offset=0.20, fontweight='bold')
     tax.clear_matplotlib_ticks()
     tax.get_axes().axis('off')
     return tax
@@ -264,13 +285,14 @@ def rotate_data(data: list[str]) -> list[str]:
     return rotated_data
 
 
-def plot_xrd_on_ternary_line(xrd_data: XrdDatabase,
-                             start_point: tuple[float, float, float],
-                             end_point: tuple[float, float, float],
-                             detect_radius: float=-1,
-                             rotate_times: int=0,
-                             ax: Optional[Axes]=None,
-                             **kwargs) -> Axes:
+def pattern_on_ternary_line(
+        xrd_data: XrdDatabase,
+        start_point: tuple[float, float, float],
+        end_point: tuple[float, float, float],
+        detect_radius: float = -1,
+        rotate_times: int = 0,
+        ax: Optional[Axes] = None,
+        **kwargs) -> None:
     """_summary_
 
     Args:
@@ -287,9 +309,9 @@ def plot_xrd_on_ternary_line(xrd_data: XrdDatabase,
                           end_point: tuple[float, float, float]) -> float:
         """This function calculates the distance of a point to a line."""
         # Convert the ternary coordinates to cartesian coordinates
-        point_cartesian = _ternary_to_cartesian(point)
-        start_point_cartesian = _ternary_to_cartesian(start_point)
-        end_point_cartesian = _ternary_to_cartesian(end_point)
+        point_cartesian = _ter_to_car(point)
+        start_point_cartesian = _ter_to_car(start_point)
+        end_point_cartesian = _ter_to_car(end_point)
         # Calculate the distance
         distance = abs((end_point_cartesian[1] - start_point_cartesian[1]) * point_cartesian[0]
                        - (end_point_cartesian[0] - start_point_cartesian[0]) * point_cartesian[1]
@@ -303,8 +325,8 @@ def plot_xrd_on_ternary_line(xrd_data: XrdDatabase,
                                  point2: tuple[float, float, float]) -> float:
         """This function calculates the distance between two points."""
         # Convert the ternary coordinates to cartesian coordinates
-        point1_cartesian = _ternary_to_cartesian(point1)
-        point2_cartesian = _ternary_to_cartesian(point2)
+        point1_cartesian = _ter_to_car(point1)
+        point2_cartesian = _ter_to_car(point2)
         # Calculate the distance
         distance = ((point1_cartesian[0] - point2_cartesian[0]) ** 2
                     + (point1_cartesian[1] - point2_cartesian[1]) ** 2) ** 0.5
@@ -331,4 +353,3 @@ def plot_xrd_on_ternary_line(xrd_data: XrdDatabase,
         index_to_plot = [mapping[i] for i in index_to_plot]
     # Plot the xrd data
     ax = xrd_data.plot(index_to_plot, style='stack', ax=ax, **kwargs)
-    return ax

@@ -3,7 +3,7 @@
 Define the NamedTuple for the information of a diffraction pattern.
 """
 from __future__ import annotations
-from typing import NamedTuple, Union
+from typing import NamedTuple, Union, Optional
 from pymatgen.core.structure import Structure
 
 
@@ -21,13 +21,18 @@ class SampleInfo(NamedTuple):
     """A NamedTuple that contains the information of a sample.
 
     Args:
-        NamedTuple (_type_): The name, formula, and description of the sample.
+        name (str): The name of the sample.
+        element (list[str]): The elements of the sample.
+        film_thickness (Optional[list[float]]): The film thickness of the sample.
+        angle_range (Optional[Union[AngleRange, list[AngleRange]]]): The angle range of the sample.
+        temperature (float): The temperature of the sample.
+        description (str): The description of the sample.
     """
     name: str
-    angle_range: Union[AngleRange, list[AngleRange]]
     element: list[str]
+    film_thickness: Optional[list[float]] = None
+    angle_range: Optional[Union[AngleRange, list[AngleRange]]] = None
     temperature: float = 25.0
-    description: str = ''
 
 
 class PatternInfo(NamedTuple):

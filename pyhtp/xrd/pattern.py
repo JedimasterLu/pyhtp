@@ -3,14 +3,16 @@
 A class that contains the data of a single diffraction pattern.
 """
 from __future__ import annotations
-from typing import Optional
+from typing import Optional, Union
 import scipy
 import numpy as np
 import matplotlib.pyplot as plt
+from numpy.typing import NDArray
 from matplotlib.axes import Axes
+from matplotlib.colors import Colormap
 from scipy.spatial import distance
 from pybaselines import Baseline
-from .infotuple import PatternInfo, AngleRange, IcsdData
+from ..typing import PatternInfo, AngleRange, IcsdData
 from .icsd import ICSD
 
 
@@ -18,14 +20,14 @@ class XrdPattern:
     """A class that contains the data of a single diffraction pattern.
     """
     def __init__(self,
-                 two_theta: np.ndarray,
-                 intensity: np.ndarray,
-                 info: PatternInfo=PatternInfo()):
+                 two_theta: NDArray,
+                 intensity: NDArray,
+                 info: PatternInfo = PatternInfo()):
         """Create a instance of XrdPattern.
 
         Args:
-            two_theta (np.ndarray): The two_theta angle of diffraction pattern.
-            intensity (np.ndarray): The intensity of diffraction pattern.
+            two_theta (NDArray): The two_theta angle of diffraction pattern.
+            intensity (NDArray): The intensity of diffraction pattern.
             description (Optional[str], optional): Description of the pattern. Defaults to None.
         """
         if len(two_theta) != len(intensity):
@@ -47,7 +49,7 @@ class XrdPattern:
         """
         return XrdPattern(two_theta=self.two_theta, intensity=self.intensity, info=self.info)
 
-    def get_baseline(self, lam: int=200) -> np.ndarray:
+    def get_baseline(self, lam: int = 200) -> NDArray:
         """Get the baseline of xrd data.
 
         Args:
@@ -56,13 +58,13 @@ class XrdPattern:
                 Defaults to 200.
 
         Returns:
-            np.ndarray: The baseline intensity of the xrd data.
+            NDArray: The baseline intensity of the xrd data.
         """
         baseline_fitter = Baseline(x_data=self.two_theta)
         baseline, _ = baseline_fitter.pspline_psalsa(self.intensity, lam=lam)
         return baseline
 
-    def subtract_baseline(self, lam: int=200) -> XrdPattern:
+    def subtract_baseline(self, lam: int = 200) -> XrdPattern:
         """Subtract the baseline of xrd data.
 
         Args:
@@ -74,11 +76,12 @@ class XrdPattern:
             XrdPattern: A new instance of XrdPattern with baseline subtracted.
         """
         baseline = self.get_baseline(lam=lam)
+        baseline = baseline[:-1]
         corrected_pattern = self.copy()
         corrected_pattern.intensity = corrected_pattern.intensity - baseline
         return corrected_pattern
 
-    def smooth(self, window: int=101, factor: float=0.5) -> XrdPattern:
+    def smooth(self, window: int = 101, factor: float = 0.5) -> XrdPattern:
         """Smooth xrd data by Savitzky-Golay filter and UnivariateSpline.
 
         Args:
@@ -100,9 +103,9 @@ class XrdPattern:
         return smoothed_pattern
 
     def get_peak(self,
-                 mask: Optional[list[AngleRange]]=None,
-                 height: float=-1,
-                 mask_height: float=-1) -> tuple[np.ndarray, dict]:
+                 mask: Optional[list[AngleRange]] = None,
+                 height: float = -1,
+                 mask_height: float = -1) -> tuple[NDArray, dict]:
         """Find peaks by scipy.signal.find_peaks. Please substract and smooth the data before peak detection.
 
         Args:
@@ -111,16 +114,16 @@ class XrdPattern:
             mask_threshold (float, optional): Height threshold at masked area. Defaults to -1.
 
         Returns:
-            tuple[np.ndarray, dict]: (the index of peaks in the array, properties of the peaks)
+            tuple[NDArray, dict]: (the index of peaks in the array, properties of the peaks)
         """
-        def _create_mask(mask: list[AngleRange]) -> np.ndarray:
+        def _create_mask(mask: list[AngleRange]) -> NDArray:
             """Create a mask for peak detection.
 
             Args:
                 mask (list[AngleRange]): Mask information in the form of [[mask1_left, mask1_right], [mask2_left, mask2_right] ...].
 
             Returns:
-                np.ndarray: The mask for peak detection. An array of bool, where True means the data is masked.
+                NDArray: The mask for peak detection. An array of bool, where True means the data is masked.
             """
             mask_condition = np.full(self.intensity.shape[0], False)
             for info in mask:
@@ -138,15 +141,16 @@ class XrdPattern:
         if mask_height == -1:  # Use the 10% of the maximum intensity as the threshold
             mask_height = 0.1 * np.max(self.intensity)
         # Set the masked area to nan
-        unmasked_intensity = self.intensity
+        unmasked_intensity = self.intensity.copy()
         unmasked_intensity[np.where(mask_condition)] = np.nan
-        masked_intensity = self.intensity
+        masked_intensity = self.intensity.copy()
         masked_intensity[np.where(~mask_condition)] = np.nan
         # Find peaks
-        peak_index, properties = scipy.signal.find_peaks(unmasked_intensity,
-                                                         height=height)
-        additional_index, a_properties = scipy.signal.find_peaks(masked_intensity,
-                                                                 height=mask_height)
+        angle_step = self.two_theta[1] - self.two_theta[0]
+        peak_index, properties = scipy.signal.find_peaks(
+            unmasked_intensity, height=height, distance=int(0.5 / angle_step))
+        additional_index, a_properties = scipy.signal.find_peaks(
+            masked_intensity, height=mask_height, distance=int(0.5 / angle_step))
         if additional_index.size > 0:
             peak_index = np.concatenate((peak_index, additional_index))
             for key, value in properties.items():
@@ -156,7 +160,7 @@ class XrdPattern:
 
     def match(self,
               icsd: ICSD,
-              number: int=5,
+              number: int = 5,
               **kwargs) -> list[IcsdData]:
         """Match the peaks of the pattern with the ICSD database.
 
@@ -183,8 +187,9 @@ class XrdPattern:
 
         # Match the peaks. For each icsd file, calculate the mse of the peak angles
         mse_list = []
-        for i, data in enumerate(icsd.data):
-            data_angle = data.two_theta
+        index_to_search = icsd.index(element=self.info.element)
+        for i in index_to_search:
+            data_angle = icsd.data[i].two_theta
             mse = calculate_mse(peak_angles, data_angle)
             mse_list.append(mse)
 
@@ -196,16 +201,19 @@ class XrdPattern:
             matched_data.append(icsd.data[index[i]])
         return matched_data
 
-    def plot(self, ax: Optional[Axes]=None, offset: float=0, **kwargs) -> Axes:
+    def plot(
+            self,
+            ax: Optional[Axes] = None,
+            offset: float = 0,
+            if_label: bool = True,
+            **kwargs) -> None:
         """Plot the diffraction pattern.
 
         Args:
             ax (Optional[Axes], optional): The matplotlib axes. Defaults to None.
             offset (float): The offset of the intensity.
+            if_label (bool, optional): If show the label. Defaults to True.
             **kwargs: The keyword arguments for the plot.
-
-        Returns:
-            Axes: The matplotlib axes.
 
         Raises:
             ValueError: The ax is not correctly set.
@@ -217,14 +225,14 @@ class XrdPattern:
         ax.plot(np.array(self.two_theta),
                 np.array(self.intensity) + offset,
                 label=f'{self.info.name}-{self.info.index}', **kwargs)
-        ax.set_xlabel(r'$2\theta$')
-        ax.set_ylabel('Intensity')
-        return ax
+        if if_label:
+            ax.set_xlabel(r'$2\theta$')
+            ax.set_ylabel('Intensity')
 
     def plot_baseline(self,
-                      lam: int=200,
-                      ax: Optional[Axes]=None,
-                      **kwargs) -> Axes:
+                      lam: int = 200,
+                      ax: Optional[Axes] = None,
+                      **kwargs) -> None:
         """Plot the baseline of the diffraction pattern.
 
         Args:
@@ -233,9 +241,6 @@ class XrdPattern:
                 Defaults to 200.
             ax (Optional[Axes], optional): The matplotlib axes. Defaults to None.
             **kwargs: The keyword arguments for the plot.
-
-        Returns:
-            Axes: The matplotlib axes.
 
         Raises:
             ValueError: The ax is not correctly set.
@@ -248,9 +253,12 @@ class XrdPattern:
         ax.plot(self.two_theta, baseline, alpha=0.7, **kwargs)
         ax.set_xlabel(r'$2\theta$')
         ax.set_ylabel('Intensity')
-        return ax
 
-    def plot_with_icsd(self, icsd: ICSD, number: int=5, **kwargs) -> None:
+    def plot_with_icsd(self,
+                       icsd: ICSD,
+                       number: int = 5,
+                       cmap: Union[str, Colormap] = 'tab10',
+                       **kwargs) -> None:
         """Plot the diffraction pattern with the matched ICSD data.
 
         Args:
@@ -264,16 +272,18 @@ class XrdPattern:
         # Get the matched data
         matched_data = self.match(icsd, number=number)
         # Plot the pattern in vertical subplots
-        fig, axs = plt.subplots(number + 1, 1, figsize=(4, 1 * number))
+        fig, axs = plt.subplots(number + 1, 1, figsize=(6, 2 * number))
         fig.subplots_adjust(hspace=0)
+        print(self.intensity)
+        print(self.two_theta)
         self.plot(ax=axs[0], **kwargs)
-        axs[0].set_title(f'{self.info.name}-{self.info.index}')
-        cmap = kwargs.get('cmap', 'tab10')
-        cmap = plt.cm.get_cmap(cmap)
+        if isinstance(cmap, str):
+            cmap = plt.cm.get_cmap(cmap)
         # Plot the matched data
         for i, data in enumerate(matched_data):
-            icsd.plot(file_name=data.name, ax=axs[i + 1], if_show=False, color=cmap(i),
-                      angle_range=AngleRange(left=self.two_theta[0], right=self.two_theta[-1]))
-            axs[i + 1].text(0.5, 0.5, f'{data.formula}-{data.icsd_code}',
-                            transform=axs[i + 1].transAxes)
-        fig.show()
+            icsd.plot(
+                file_name=data.name, ax=axs[i + 1],
+                if_show=False, color=cmap(i),
+                angle_range=AngleRange(left=self.two_theta[0],
+                                       right=self.two_theta[-1]))
+        plt.show()
