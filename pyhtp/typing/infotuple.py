@@ -30,9 +30,11 @@ class SampleInfo(NamedTuple):
     """
     name: str
     element: list[str]
+    point_number: int = -1
     film_thickness: Optional[list[float]] = None
     angle_range: Optional[Union[AngleRange, list[AngleRange]]] = None
-    temperature: float = 25.0
+    wavelength_range: Optional[tuple[float, float]] = None
+    temperature: float | tuple[float, float] = 25.0
 
 
 class PatternInfo(NamedTuple):
@@ -46,6 +48,19 @@ class PatternInfo(NamedTuple):
     angle_range: AngleRange = AngleRange(left=0, right=90)
     element: list[str] = []
     temperature: float = 25.0
+
+
+class SpectrumInfo(NamedTuple):
+    """A NamedTuple that contains the information of a spectrum.
+
+    Args:
+        NamedTuple (_type_): The name, index, elements, and temperature of the spectrum.
+    """
+    name: str
+    index: int
+    wavelength_range: tuple[float, float]
+    element: list[str]
+    temperature: float
 
 
 class Latticeabc(NamedTuple):
@@ -98,3 +113,11 @@ class IcsdData(NamedTuple):
     lattice_angles: Latticeangles
     icsd_code: int
     structure: Structure
+
+
+class BandGap(NamedTuple):
+    """4 band gaps of a material."""
+    direct_allowed: float
+    direct_forbidden: float
+    indirect_allowed: float
+    indirect_forbidden: float

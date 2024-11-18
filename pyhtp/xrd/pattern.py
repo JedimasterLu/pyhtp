@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 from numpy.typing import NDArray
 from matplotlib.axes import Axes
 from matplotlib.colors import Colormap
-from scipy.spatial import distance
 from pybaselines import Baseline
 from ..typing import PatternInfo, AngleRange, IcsdData
 from .icsd import ICSD
@@ -161,12 +160,14 @@ class XrdPattern:
     def match(self,
               icsd: ICSD,
               number: int = 5,
+              threshold: float = 0.1,
               **kwargs) -> list[IcsdData]:
         """Match the peaks of the pattern with the ICSD database.
 
         Args:
             icsd (ICSD): The ICSD database.
             number (int, optional): The number of matched patterns. Defaults to 5.
+            threshold (float, optional): The angle threshold of the Jaccard similarity. Defaults to 0.1.
             **kwargs: The arguments for get_peak.
 
         Returns:
@@ -176,26 +177,27 @@ class XrdPattern:
         _, properties = self.get_peak(**kwargs)
         peak_angles = properties['peak_angles']
 
-        def calculate_mse(angles1, angles2) -> float:
-            """Calculate the mean squared error between two sets of angles using nearest neighbor matching."""
-            angles1 = np.array(angles1)
-            angles2 = np.array(angles2)
-            distances = distance.cdist(angles1.reshape(-1, 1), angles2.reshape(-1, 1), 'sqeuclidean')
-            min_distances = np.min(distances, axis=1)
-            mse = np.mean(min_distances)
-            return mse
+        def jaccard_similarity(list1, list2, threshold=0.1):
+            """Calculate the Jaccard similarity of two lists."""
+            for i, val1 in enumerate(list1):
+                for val2 in list2:
+                    if abs(val1 - val2) < threshold:
+                        list1[i] = val2
+                        break
+            intersection = len(set(list1) & set(list2))
+            union = (len(list1) + len(list2)) - intersection
+            return intersection / union
 
-        # Match the peaks. For each icsd file, calculate the mse of the peak angles
-        mse_list = []
+        # Match the peaks.
+        score = []
         index_to_search = icsd.index(element=self.info.element)
         for i in index_to_search:
             data_angle = icsd.data[i].two_theta
-            mse = calculate_mse(peak_angles, data_angle)
-            mse_list.append(mse)
+            score.append(jaccard_similarity(peak_angles, data_angle, threshold))
 
         # Sort the mse list and return the top matches
-        mse_list = np.array(mse_list)
-        index = np.argsort(mse_list)
+        score = np.array(score)
+        index = np.argsort(score)
         matched_data = []
         for i in range(number):
             matched_data.append(icsd.data[index[i]])
@@ -206,6 +208,7 @@ class XrdPattern:
             ax: Optional[Axes] = None,
             offset: float = 0,
             if_label: bool = True,
+            if_peak: bool = False,
             **kwargs) -> None:
         """Plot the diffraction pattern.
 
@@ -222,6 +225,14 @@ class XrdPattern:
             _, ax = plt.subplots()
         if ax is None:
             raise ValueError('The ax is not correctly set!')
+        if if_peak:
+            peak_index, _ = self.get_peak(
+                height=kwargs.pop('height', -1),
+                mask_height=kwargs.pop('mask_height', -1),
+                mask=kwargs.pop('mask', None))
+            ax.plot(self.two_theta[peak_index],
+                    self.intensity[peak_index] + offset,
+                    'x', color=kwargs.get('color', 'tab:blue'))
         ax.plot(np.array(self.two_theta),
                 np.array(self.intensity) + offset,
                 label=f'{self.info.name}-{self.info.index}', **kwargs)
@@ -265,17 +276,12 @@ class XrdPattern:
             ax (Optional[Axes], optional): The matplotlib axes. Defaults to None.
             number (int, optional): The number of matched patterns. Defaults to 5.
             **kwargs: The keyword arguments for the plot.
-
-        Returns:
-            Axes: The matplotlib axes.
         """
         # Get the matched data
         matched_data = self.match(icsd, number=number)
         # Plot the pattern in vertical subplots
         fig, axs = plt.subplots(number + 1, 1, figsize=(6, 2 * number))
         fig.subplots_adjust(hspace=0)
-        print(self.intensity)
-        print(self.two_theta)
         self.plot(ax=axs[0], **kwargs)
         if isinstance(cmap, str):
             cmap = plt.cm.get_cmap(cmap)

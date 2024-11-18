@@ -4,5 +4,5 @@ Package: pyhtp.ellip
 Author: Junyuan Lu
 Contact: Lujunyuan@sjtu.edu.cn
 """
-from pyhtp.ellip.database import EllipDatabase
-from pyhtp.ellip.plotter import EllipPlotter
+from pyhtp.ellip.database import EllipDatabase  # noqa
+from pyhtp.ellip.spectrum import EllipSpectrum, EllipPointSet  # noqa

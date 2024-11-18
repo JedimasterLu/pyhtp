@@ -163,7 +163,10 @@ def scatter_quaternary(
         value[1::2] = value[1::2, ::-1]
     # Color
     if color is None:
-        cmap = plt.cm.get_cmap('tab20')
+        if len(np.unique(value)) > 10:
+            cmap = plt.cm.get_cmap('tab20')
+        else:
+            cmap = plt.cm.get_cmap('tab10')
         color = {}
         for i, v in enumerate(np.unique(value)):
             color[v] = to_hex(cmap(i), keep_alpha=True)

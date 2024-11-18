@@ -13,6 +13,9 @@ from mpl_toolkits.mplot3d import Axes3D
 from ..typing import SampleInfo, AngleRange, PatternInfo
 from .pattern import XrdPattern
 from .icsd import ICSD
+os.environ["OMP_NUM_THREADS"] = '2'
+from sklearn.cluster import KMeans  # noqa: E402  # pylint: disable=C0413,C0411
+from sklearn.metrics import silhouette_score  # noqa: E402  # pylint: disable=C0413,C0411
 
 
 class XrdDatabase:
@@ -106,6 +109,7 @@ class XrdDatabase:
                 two_theta.append(line[0])
                 intensity.append(line[1])
             # Convert the list into a numpy array
+            assert isinstance(info.temperature, float)  # temperature can only be float for xrd
             pattern = XrdPattern(two_theta=np.array(two_theta), intensity=np.array(intensity),
                                  info=PatternInfo(name=info.name, element=info.element,
                                                   temperature=info.temperature,
@@ -144,6 +148,7 @@ class XrdDatabase:
             # Merge the two arrays
             two_theta = np.concatenate((left.two_theta, right.two_theta))
             intensity = np.concatenate((left.intensity, right.intensity))
+            assert isinstance(info.temperature, float)  # temperature can only be float for xrd
             new_info = PatternInfo(
                 name=info.name,
                 index=left.info.index,
@@ -271,8 +276,6 @@ class XrdDatabase:
                 ax.scatter(pattern.two_theta[peak[0]],
                            pattern.intensity[peak[0]] + i * margin,
                            color=cmap(i / len(patterns)), s=10, marker='x')
-                ax.text(0.5, i * margin + margin * 0.3, f'No. {pattern.info.index}',
-                        fontsize=10, color=cmap(i / len(patterns)))
         # Save the figure
         if save_path and fig:
             fig.savefig(save_path, dpi=dpi)
@@ -363,19 +366,20 @@ class XrdDatabase:
         Z = np.array([pattern.intensity[:min_length] for pattern in patterns])
         # Plot the surface
         ax.plot_surface(X, Y, Z, cmap=cmap)
+        ax.set_box_aspect([4, 3, 1])
         # Save the figure
         if save_path and fig:
             fig.savefig(save_path, dpi=dpi)
 
     def classify(
             self,
-            k_range: tuple[int, int] = (3, 10),
+            k_value: tuple[int, int] | int = (3, 10),
             full_run: bool = False,
             **kwargs) -> NDArray:
         """_summary_
 
         Args:
-            k_range (tuple[int, int], optional): n_cluster range. Defaults to (3, 10).
+            k_value (tuple[int, int], optional): n_cluster range. Defaults to (3, 10).
             full_run (bool, optional): If set, run the full range of k. Defaults to False.
             **kwargs: Other arguments for subtract and smooth and verbose.
 
@@ -385,10 +389,80 @@ class XrdDatabase:
         Returns:
             NDArray: The clustering label.
         """
-        # Import the KMeans and silhouette_score
-        os.environ["OMP_NUM_THREADS"] = '2'
-        from sklearn.cluster import KMeans  # pylint: disable=import-outside-toplevel
-        from sklearn.metrics import silhouette_score  # pylint: disable=import-outside-toplevel
+        if isinstance(k_value, int):
+            k_value = (k_value, k_value + 1)
+        # Copy the database
+        db = self.copy()
+        # Process the patterns with kwargs given
+        if 'lam' in kwargs:
+            db = db.subtract_baseline(lam=kwargs.pop('lam'))
+        if 'window' in kwargs or 'factor' in kwargs:
+            db = db.smooth(window=kwargs.pop('window', 101),
+                           factor=kwargs.pop('factor', 0.5))
+        # Get the characteristic peaks
+        ch_peaks = db.characteristic_peak(**kwargs)
+        # Get the peak of the patterns
+        peak_angle = []
+        peak_intensity = []
+        for pattern in db.data:
+            _, properties = pattern.get_peak(
+                mask=kwargs.get('mask', None),
+                height=kwargs.get('height', -1),
+                mask_height=kwargs.get('mask_height', -1))
+            peak_angle.append(properties['peak_angles'])
+            peak_intensity.append(properties['peak_heights'])
+        # The length of elements in peak_data are not the same
+        # Construct a matrix based on ch_peaks
+        # The left 4 value of the matrix is the similarity of the nearest peak to the characteristic peaks
+        # The right 4 value is the intensities of the nearest peak
+        peak_mat = np.zeros((len(peak_angle), 2 * len(ch_peaks)))
+        for i, peaks in enumerate(peak_angle):
+            if len(peaks) == 0:
+                continue
+            for j, ch_peak in enumerate(ch_peaks):
+                min_index = np.argmin(np.abs(peaks - ch_peak))
+                peak_mat[i, j] = np.abs(peaks[min_index] - ch_peak) / ch_peak
+                peak_mat[i, j + len(ch_peaks)] = (peak_intensity[i][min_index]
+                                                  / peak_intensity[i].max())
+        # KMeans clustering
+        result = None
+        last_result = None
+        score = -1
+        last_score = -1
+        all_result = []
+        all_score = []
+        for k in range(*k_value):
+            result = KMeans(
+                n_clusters=k,
+                random_state=0,
+                verbose=kwargs.get('verbose', 0)).fit_predict(peak_mat)
+            score = silhouette_score(peak_mat, result)
+            all_score.append(score)
+            all_result.append(result)
+            print(f'Classification with {k - 1} clusters, silhouette score: {score:.2f}')
+            if score < last_score and not full_run:
+                result = last_result
+                print(f'Finish with {k - 1} clusters')
+                break
+            last_result = result
+            last_score = score
+        if full_run:
+            max_score_k = all_score.index(max(all_score))
+            result = all_result[max_score_k]
+            print(f'Finish with {max_score_k} clusters')
+        if result is None:
+            raise ValueError('The clustering is not successful!')
+        return result
+
+    def characteristic_peak(self, **kwargs) -> list[float]:
+        """Return all the characteristic peaks of the patterns.
+
+        Args:
+            **kwargs: Other arguments for get_peak and post process.
+
+        Returns:
+            NDArray: The characteristic peaks.
+        """
         # Copy the database
         db = self.copy()
         # Process the patterns with kwargs given
@@ -398,47 +472,22 @@ class XrdDatabase:
             db = db.smooth(window=kwargs.get('window', 101),
                            factor=kwargs.get('factor', 0.5))
         # Get the peak of the patterns
-        peak_data = []
+        peak_data: list[NDArray[np.float64]] = []
         for pattern in db.data:
             _, properties = pattern.get_peak(
                 mask=kwargs.get('mask', None),
                 height=kwargs.get('height', -1),
                 mask_height=kwargs.get('mask_height', -1))
             peak_data.append(properties['peak_angles'])
-        # The length of elements in peak_data are not the same
-        # fill the missing elements with 0
-        max_len = max(len(i) for i in peak_data)
-        for i, data in enumerate(peak_data):
-            peak_num = len(data)
-            peak_data[i] = np.pad(data, (0, max_len - len(data)))
-            # Add the number of peaks as the first column
-            peak_data[i] = np.insert(peak_data[i], 0, peak_num)
-        peak_data = np.array(peak_data)
-        print(f'Peak numbers: {np.unique(peak_data[:, 0])}')
-        # KMeans clustering
-        print("K-means clustering ...")
-        result = None
-        last_result = None
-        score = -1
-        last_score = -1
-        all_result = []
-        all_score = []
-        for k in range(*k_range):
-            result = KMeans(
-                n_clusters=k,
-                random_state=0,
-                verbose=kwargs.get('verbose', 1)).fit_predict(peak_data)
-            score = silhouette_score(peak_data, result)
-            all_score.append(score)
-            all_result.append(result)
-            if score < last_score and not full_run:
-                result = last_result
-                break
-            last_result = result
-            last_score = score
-        if full_run:
-            result = all_result[all_score.index(max(all_score))]
-        if result is None:
-            raise ValueError('The clustering is not successful!')
-        print(f'Classification with {k - 1} clusters, silhouette score: {score:.2f}')
-        return result
+        # Get the max peak number as k_value for kmeans
+        max_peak_num = max(len(i) for i in peak_data)
+        # Get the characteristic peaks
+        # First, concatenate all the peaks
+        all_peaks = np.concatenate(peak_data)
+        # Second, use kmeans to cluster the peaks
+        kmeans = KMeans(n_clusters=max_peak_num, random_state=0).fit(all_peaks.reshape(-1, 1))
+        # Third, get the characteristic peaks as the center of each cluster
+        ch_peaks = kmeans.cluster_centers_[:, 0]
+        # Finally, sort the peaks
+        ch_peaks = np.sort(ch_peaks)
+        return ch_peaks.tolist()

@@ -6,6 +6,7 @@ Contact: Lujunyuan@sjtu.edu.cn
 """
 from __future__ import annotations
 import os
+import re
 import pickle
 from typing import Optional, Union
 import matplotlib.pyplot as plt
@@ -29,8 +30,9 @@ class ICSD:
         self._file_dir = file_dir
         self.data: list[IcsdData] = []
         # Load the data from the pickle file if it exists
-        if os.path.exists('icsd.pkl'):
-            self.data = pickle.load(open('icsd.pkl', 'rb'))
+        if os.path.exists(os.path.join(self._file_dir, 'icsd.pkl')):
+            with open(os.path.join(self._file_dir, 'icsd.pkl'), 'rb') as f:
+                self.data = pickle.load(f)
         else:
             self.process(if_save=if_save)
 
@@ -43,15 +45,19 @@ class ICSD:
             if file_name.split('.')[-1] != 'cif':
                 continue
             file_path = os.path.join(self._file_dir, file_name)
-            parser = CifParser(file_path)
-            cif_data = parser.as_dict()
-            # Because the initial key is a long string, we need to get the first key.
-            cif_data = cif_data[str(list(cif_data.keys())[0])]
-            # Remove the spaces in cif_data['_space_group_name_H-M_alt']
-            cif_data['_space_group_name_H-M_alt'] = cif_data['_space_group_name_H-M_alt'].replace(' ', '')
-            structure = Structure.from_file(file_path, primitive=False, merge_tol=0.01)
-            xrd = XRDCalculator(wavelength='CuKa')
-            pattern = xrd.get_pattern(structure)
+            try:
+                parser = CifParser(file_path)
+                cif_data = parser.as_dict()
+                # Because the initial key is a long string, we need to get the first key.
+                cif_data = cif_data[str(list(cif_data.keys())[0])]
+                # Remove the spaces in cif_data['_space_group_name_H-M_alt']
+                cif_data['_space_group_name_H-M_alt'] = cif_data['_space_group_name_H-M_alt'].replace(' ', '')
+                structure = Structure.from_file(file_path, primitive=False, merge_tol=0.01)
+                xrd = XRDCalculator(wavelength='CuKa')
+                pattern = xrd.get_pattern(structure)
+            except ValueError as e:
+                print(f'Error in processing {file_name}: {e}')
+                continue
             icsd_data = {
                 'name': file_name,
                 'two_theta': pattern.x,
@@ -78,12 +84,14 @@ class ICSD:
             save_path = os.path.join(self._file_dir, 'icsd.pkl')
             pickle.dump(self.data, open(save_path, 'wb'))
 
-    def index(self,
-              file_name: Optional[str] = None,
-              icsd_code: Optional[int] = None,
-              space_group: Optional[str] = None,
-              space_group_number: Optional[int] = None,
-              element: Optional[list[str]] = None) -> list[int]:
+    def index(
+            self,
+            file_name: Optional[str] = None,
+            icsd_code: Optional[int] = None,
+            space_group: Optional[str] = None,
+            space_group_number: Optional[int] = None,
+            element: Optional[list[str]] = None,
+            peak_angle: Optional[float | tuple[float, float]] = None) -> list[int]:
         """Get the index from the data in database.
 
         Args:
@@ -91,7 +99,8 @@ class ICSD:
             icsd_code (Optional[int], optional): ICSD code. Defaults to None.
             space_group (Optional[str], optional): Space group. Defaults to None.
             space_group_number (Optional[int], optional): No of space group. Defaults to None.
-            element (Optional[list[str]], optional): A list, - means mustn't contain. Defaults to None.
+            element (Optional[list[str]], optional): A list of element system. Defaults to None.
+            peak_angle (Optional[float | tuple[float, float]], optional): Find icsd files that has the specific peak angle. If input a float, a automate 0.2 deg range will be created. Defaults to None.
 
         Returns:
             list[int]: The index of the data.
@@ -110,17 +119,21 @@ class ICSD:
             if space_group_number and space_group_number != data.space_group_number:
                 continue
             if element:
-                add_flag = True
-                for e in element:
-                    if e.startswith('-') and e[1:] in data.formula:
-                        add_flag = False
-                        break
-                    if e.startswith('+') and e not in data.formula:
-                        add_flag = False
-                        break
-                    elif e in data.formula:
-                        add_flag = True
-                if not add_flag:
+                # Process the formula to get icsd element list
+                # The formula is like 'Ge0.15 Se0.11 H0.1'
+                icsd_element: list[str] = re.findall(r'[A-Z][a-z]*', data.formula)
+                if not icsd_element:
+                    raise ValueError(f'No element found in the formula {data.formula}!')
+                # If the icsd_element is a subset of element, then we find the data.
+                if not set(icsd_element).issubset(set(element)):
+                    continue
+            if peak_angle:
+                if isinstance(peak_angle, float):
+                    peak_angle = (peak_angle - 0.2, peak_angle + 0.2)
+                if not isinstance(peak_angle, tuple):
+                    raise ValueError('The peak_angle is not correctly set!')
+                if not any(peak_angle[0] <= angle <= peak_angle[1]
+                           for angle in data.two_theta):
                     continue
             result_index.append(i)
         if not result_index:

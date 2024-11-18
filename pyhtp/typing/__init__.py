@@ -3,4 +3,4 @@
 Data namedtuples for pyhtp.
 """
 from .infotuple import (AngleRange, IcsdData, Latticeabc, Latticeangles, MillerIndice,  # noqa: F401
-                        PatternInfo, SampleInfo)
+                        PatternInfo, SampleInfo, SpectrumInfo, BandGap)
