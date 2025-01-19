@@ -9,7 +9,7 @@ import scipy
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from numpy.typing import ArrayLike, NDArray
-from ..typing import SpectrumInfo, BandGap
+from ..typing import SpectrumInfo, BandGap, BandGapLegacy
 
 
 class EllipPointSet(NamedTuple):
@@ -141,7 +141,7 @@ class EllipSpectrum:
             ax.set_ylabel(r'$\alpha h\nu$ (eV)')
 
     @property
-    def bandgap(self) -> BandGap:
+    def bandgap_legacy(self) -> BandGapLegacy:
         """Do linear regression on Tauc plot to get bandgap.
 
         Returns:
@@ -166,6 +166,29 @@ class EllipSpectrum:
             fit = np.polyfit(x_fit, y_fit, 1)
             # The intersection with x axis is the bandgap.
             bandgap[key] = -fit[1] / fit[0]
+        return BandGapLegacy(**bandgap)
+
+    def bandgap(self, **kwargs) -> BandGap:
+        """Do linear regression on Tauc plot to get bandgap.
+
+        Returns:
+            BandGap: The different types of bandgap.
+        """
+        bandgap = {
+            'direct_allowed': (0., 0.),
+            'direct_forbidden': (0., 0.),
+            'indirect_allowed': (0., 0.),
+            'indirect_forbidden': (0., 0.)
+        }
+        for (exponent, key) in zip([2, 2 / 3, 0.5, 1 / 3], bandgap):
+            freq = scipy.constants.c / (self.wavelength * 1e-9)
+            x = scipy.constants.Planck * freq  # J
+            y = self.absorp * x ** exponent * 1e2  # J/cm^2
+            x /= scipy.constants.e  # eV
+            y /= scipy.constants.e  # eV/cm^2
+            value, error = self._fit_linear(exponent, **kwargs)
+            # The intersection with x axis is the bandgap.
+            bandgap[key] = (value, error)
         return BandGap(**bandgap)
 
     def _fit_linear(
@@ -190,8 +213,10 @@ class EllipSpectrum:
         # Use ev as unit, original ones are use joule as unit.
         x /= scipy.constants.e
         y /= scipy.constants.e
+
         # Normalize y to the same scale as x.
-        y = y / np.max(y) * (np.max(x) - np.min(x))
+        y_original = y
+        y = (y - np.min(y)) / (np.max(y) - np.min(y)) * (np.max(x) - np.min(x))
 
         # Recursively bisect the curve to find the linear segment.
         section_index: list[int] = []
@@ -239,8 +264,9 @@ class EllipSpectrum:
                     and i not in [0, len(section_index) - 2]
                     and inclination[i] > max(inclination[i - 1], inclination[i + 1], 0)):
                 tauc_index.append(i)
-        # if len(tauc_index) == 0:
-        #     raise ValueError('No Tauc segment found.')
+        if len(tauc_index) == 0:
+            raise ValueError('No Tauc segment found.')
+
         # Find the base line segment corresponding to the Tauc segment.
         # There are also 4 rules to identify the base line segment.
         # 1. The number of points in the segment should be larger than 2.
@@ -268,9 +294,50 @@ class EllipSpectrum:
                 # Choose the segment with the smallest inclination.
                 base_index = [base_index[np.argmin(inclination[base_index])]]
             pair_index.append((tauc, base_index[0]))
-        # if len(pair_index) == 0:
-        #     raise ValueError('No base line segment and tauc segment pair found.')
-        return section_index
+        if len(pair_index) == 0:
+            raise ValueError('No base line segment and tauc segment pair found.')
+
+        # Recover the original scale of y before linear fit.
+        y = y_original
+
+        # Linear fit the Tauc segment and base line segment.
+        for tauc, base in pair_index:
+
+            fit_tauc, cov_tauc = np.polyfit(
+                x[section_index[tauc]:section_index[tauc + 1]],
+                y[section_index[tauc]:section_index[tauc + 1]], 1, cov=True)
+            fit_base, cov_base = np.polyfit(
+                x[section_index[base]:section_index[base + 1]],
+                y[section_index[base]:section_index[base + 1]], 1, cov=True)
+            # Calculate the intersection of the two lines.
+            x_intersect = (fit_base[1] - fit_tauc[1]) / (fit_tauc[0] - fit_base[0])
+            y_intersect = fit_tauc[0] * x_intersect + fit_tauc[1]
+            # Get the standard error of slope and intercept of tauc fit and base fit.
+            sigma_slope_tauc = np.sqrt(cov_tauc[0, 0])
+            sigma_intercept_tauc = np.sqrt(cov_tauc[1, 1])
+            sigma_slope_base = np.sqrt(cov_base[0, 0])
+            sigma_intercept_base = np.sqrt(cov_base[1, 1])
+            # Calculate the difference between min and max intersection.
+            x_intersect_max = (
+                ((fit_base[1] + sigma_intercept_base) - (fit_tauc[1] - sigma_intercept_tauc))
+                / ((fit_tauc[0] - sigma_slope_tauc) - (fit_base[0] + sigma_slope_base)))
+            x_intersect_min = (
+                ((fit_base[1] - sigma_intercept_base) - (fit_tauc[1] + sigma_intercept_tauc))
+                / ((fit_tauc[0] + sigma_slope_tauc) - (fit_base[0] - sigma_slope_base)))
+            sigma_x_intersect = x_intersect_max - x_intersect_min
+
+            # Judge if the intersection can be selected
+            if (not (x_intersect_min < x_intersect < x_intersect_max)
+                    or x_intersect > sigma_x_intersect):
+                continue
+            if y_intersect > (y[section_index[tauc]]
+                              + 0.2 * (y[section_index[tauc + 1]]
+                                       - y[section_index[tauc]])):
+                continue
+
+            return x_intersect, sigma_x_intersect
+
+        raise ValueError('No valid intersection found.')
 
 
 def _sections_r2(

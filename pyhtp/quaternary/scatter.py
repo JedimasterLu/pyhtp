@@ -115,6 +115,7 @@ def scatter_quaternary(
         raise ValueError("The database or coordinates should be provided.")
     if database is not None and coord is None:
         coord: NDArray = get_coord(
+            label=label,
             side_num=int(np.sqrt(len(value))),
             info=database.info,
             composition_type=composition_type)

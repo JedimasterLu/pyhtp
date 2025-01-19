@@ -8,3 +8,5 @@ jupyter/
 ellip_plot.py
 quat_xrd.py
 other/
+.gitignore
+temp/

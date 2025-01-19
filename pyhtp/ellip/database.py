@@ -117,8 +117,7 @@ class EllipDatabase:
         """Return a copy of the class."""
         return EllipDatabase(self._file_path, self.info)
 
-    @property
-    def fom(self) -> NDArray:
+    def fom(self, wavelength: float | None = None) -> NDArray:
         """Return the figure of merit of the sample at a specific wavelength.
 
         Args:
@@ -133,4 +132,9 @@ class EllipDatabase:
         cry_n = np.array([d.crystalline.refrac for d in self.data])
         amo_k = np.array([d.amorphous.extinc for d in self.data])
         cry_k = np.array([d.crystalline.extinc for d in self.data])
-        return np.abs(amo_n - cry_n) / (cry_k + amo_k)
+        if wavelength is None:
+            return np.abs(amo_n - cry_n) / (cry_k + amo_k)
+        else:
+            # Find the index of the wavelength nearest to the input wavelength
+            idx = np.argmin(np.abs(self.wavelength - wavelength))
+            return np.abs(amo_n[:, idx] - cry_n[:, idx]) / (cry_k[:, idx] + amo_k[:, idx])

@@ -100,20 +100,15 @@ class XrdDatabase:
             with open(file_path, 'r', encoding='utf-8') as file:
                 lines = file.readlines()
                 lines.pop(0)
-            # Split each line of data into a list: [2-theta, intensity]
-            two_theta = []
-            intensity = []
-            for line in lines:
-                line = line.split()
-                line = [float(i) for i in line]
-                two_theta.append(line[0])
-                intensity.append(line[1])
+            # Split each line of data into a list: [two-theta, intensity]
+            data = np.array([line.split() for line in lines], dtype=float)
             # Convert the list into a numpy array
-            assert isinstance(info.temperature, float)  # temperature can only be float for xrd
-            pattern = XrdPattern(two_theta=np.array(two_theta), intensity=np.array(intensity),
-                                 info=PatternInfo(name=info.name, element=info.element,
-                                                  temperature=info.temperature,
-                                                  angle_range=angle_range, index=index))
+            assert isinstance(info.temperature, (int, float))  # temperature can only be float for xrd
+            pattern = XrdPattern(
+                two_theta=data[:, 0], intensity=data[:, 1],
+                info=PatternInfo(name=info.name, element=info.element,
+                                 temperature=info.temperature,
+                                 angle_range=angle_range, index=index))
             return pattern
 
         # Define the function to combine two XrdPattern into one
@@ -148,7 +143,7 @@ class XrdDatabase:
             # Merge the two arrays
             two_theta = np.concatenate((left.two_theta, right.two_theta))
             intensity = np.concatenate((left.intensity, right.intensity))
-            assert isinstance(info.temperature, float)  # temperature can only be float for xrd
+            assert isinstance(info.temperature, (int, float))  # temperature can only be float for xrd
             new_info = PatternInfo(
                 name=info.name,
                 index=left.info.index,
@@ -164,12 +159,12 @@ class XrdDatabase:
         for i, path in enumerate(file_dir):
             if not os.path.isdir(path):
                 raise FileNotFoundError(f'The directory {path} is not found!')
-            if i > 1 and len(os.listdir(path)) != len(data):
+            # Exclude the files that are not .xy files
+            file_names = [file_name for file_name in os.listdir(path) if file_name.endswith('.xy')]
+            if i > 1 and len(file_names) != len(data):
                 raise ValueError('The number of files in the directories are not the same!')
             # Read the data
-            for j, file_name in enumerate(os.listdir(path)):
-                if not file_name.endswith('.xy'):
-                    continue
+            for j, file_name in enumerate(file_names):
                 angle_range = info.angle_range[i] if isinstance(info.angle_range, list) \
                     else info.angle_range
                 pattern = _read_xy(info, os.path.join(path, file_name), angle_range, j)
@@ -186,7 +181,7 @@ class XrdDatabase:
         Returns:
             XrdDatabase: The copied XrdDatabase object.
         """
-        return XrdDatabase(data=self.data, info=self.info)
+        return XrdDatabase(data=self.data.copy(), info=self.info)
 
     def subtract_baseline(self, lam: int = 200) -> XrdDatabase:
         """Subtract the baseline of the diffraction patterns.
@@ -197,9 +192,10 @@ class XrdDatabase:
         Returns:
             XrdDatabase: The XrdDatabase object.
         """
-        for index, pattern in enumerate(self.data):
-            self.data[index] = pattern.subtract_baseline(lam=lam)
-        return self
+        new_db = self.copy()
+        for index, pattern in enumerate(new_db.data):
+            new_db.data[index] = pattern.subtract_baseline(lam=lam)
+        return new_db
 
     def smooth(self, window: int = 101, factor: float = 0.5) -> XrdDatabase:
         """Smooth the diffraction patterns.
@@ -413,8 +409,8 @@ class XrdDatabase:
             peak_intensity.append(properties['peak_heights'])
         # The length of elements in peak_data are not the same
         # Construct a matrix based on ch_peaks
-        # The left 4 value of the matrix is the similarity of the nearest peak to the characteristic peaks
-        # The right 4 value is the intensities of the nearest peak
+        # The left half value of the matrix is the similarity of the nearest peak to the characteristic peaks
+        # The right half is the intensities of the nearest peak
         peak_mat = np.zeros((len(peak_angle), 2 * len(ch_peaks)))
         for i, peaks in enumerate(peak_angle):
             if len(peaks) == 0:
@@ -439,7 +435,7 @@ class XrdDatabase:
             score = silhouette_score(peak_mat, result)
             all_score.append(score)
             all_result.append(result)
-            print(f'Classification with {k - 1} clusters, silhouette score: {score:.2f}')
+            print(f'Classification with {k} clusters, silhouette score: {score:.2f}')
             if score < last_score and not full_run:
                 result = last_result
                 print(f'Finish with {k - 1} clusters')

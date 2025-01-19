@@ -117,7 +117,15 @@ class IcsdData(NamedTuple):
 
 class BandGap(NamedTuple):
     """4 band gaps of a material."""
-    direct_allowed: float
+    direct_allowed: tuple[float, float]  # value, error
+    direct_forbidden: tuple[float, float]
+    indirect_allowed: tuple[float, float]
+    indirect_forbidden: tuple[float, float]
+
+
+class BandGapLegacy(NamedTuple):
+    """4 band gaps of a material."""
+    direct_allowed: float  # value
     direct_forbidden: float
     indirect_allowed: float
     indirect_forbidden: float

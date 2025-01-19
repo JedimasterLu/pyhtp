@@ -4,6 +4,7 @@ A class that contains the data of a single diffraction pattern.
 """
 from __future__ import annotations
 from typing import Optional, Union
+import os
 import scipy
 import numpy as np
 import matplotlib.pyplot as plt
@@ -80,7 +81,10 @@ class XrdPattern:
         corrected_pattern.intensity = corrected_pattern.intensity - baseline
         return corrected_pattern
 
-    def smooth(self, window: int = 101, factor: float = 0.5) -> XrdPattern:
+    def smooth(
+            self,
+            window: int = 101,
+            factor: float = 0.5) -> XrdPattern:
         """Smooth xrd data by Savitzky-Golay filter and UnivariateSpline.
 
         Args:
@@ -94,11 +98,21 @@ class XrdPattern:
         Returns:
             XrdPattern: A new instance of XrdPattern with smoothed intensity.
         """
+        if window < 3 and factor <= 0:
+            print('Warning: No smoothing applied!')
+            return self.copy()
         smoothed_pattern = self.copy()
-        smoothed_pattern.intensity = scipy.signal.savgol_filter(smoothed_pattern.intensity, window, 3)
-        interpolate_smooth = scipy.interpolate.UnivariateSpline(smoothed_pattern.two_theta, smoothed_pattern.intensity)
-        interpolate_smooth.set_smoothing_factor(factor)
-        smoothed_pattern.intensity = interpolate_smooth(smoothed_pattern.two_theta)
+        if window % 2 == 0:
+            window += 1
+        if window > 3:
+            smoothed_pattern.intensity = scipy.signal.savgol_filter(
+                smoothed_pattern.intensity, window, 3)
+        if factor > 0:
+            interpolate_smooth = scipy.interpolate.UnivariateSpline(
+                smoothed_pattern.two_theta,
+                smoothed_pattern.intensity,
+                s=factor)
+            smoothed_pattern.intensity = interpolate_smooth(smoothed_pattern.two_theta)
         return smoothed_pattern
 
     def get_peak(self,
@@ -293,3 +307,11 @@ class XrdPattern:
                 angle_range=AngleRange(left=self.two_theta[0],
                                        right=self.two_theta[-1]))
         plt.show()
+
+    def save_txt(self, save_dir: str | None = None) -> None:
+        """Save the diffraction pattern to txt file."""
+        file_name = f'{self.info.name}-{self.info.index}.txt'
+        if save_dir:
+            file_name = os.path.join(save_dir, file_name)
+        # Use comma to separate the two columns
+        np.savetxt(file_name, np.array([self.two_theta, self.intensity]).T, delimiter=',')
