@@ -14,7 +14,7 @@ from matplotlib.markers import MarkerStyle
 from matplotlib.transforms import Affine2D
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from ..xrd import XrdDatabase
+from ..xrd import XrdDatabase, ICSD
 from .utils import get_coord, tet_to_car
 
 
@@ -76,12 +76,14 @@ def scatter_quaternary(
         value: Union[list[str | int], NDArray],  # type: ignore
         label: tuple[str, str, str, str],
         database: Optional[XrdDatabase] = None,
+        icsd: Optional[ICSD] = None,
         coord: Optional[list[tuple[float, float, float, float]]] = None,  # type: ignore
         color: Optional[dict[str, str]] = None,
         rotation: Optional[dict[str, float]] = None,
         ticknum: int = 5,
         path_type: Literal['normal', 'snakelike'] = 'normal',
         composition_type: Literal['atomic', 'volumetric'] = 'atomic',
+        interactive: bool = False,
         ax: Optional[Axes3D] = None,
         **kwargs) -> None:
     """Plot the quaternary scatter phase diagram.
@@ -90,12 +92,14 @@ def scatter_quaternary(
         value (Union[list[str | int], np.ndarray]): The phase of each point.
         label (tuple[str, str, str, str]): The label of each element.
         database (Optional[XrdDatabase], optional): The XRD database. Defaults to None.
+        icsd (Optional[ICSD], optional): The ICSD database. If defined, the plots in interactive mode will display icsd diffraction lines. Defaults to None.
         coord (Optional[list[tuple[float, float, float, float]]], optional): The coordinates of each point. Defaults to None.
         color (Optional[dict[str, str]], optional): The color of each phase. Defaults to None.
         rotation (Optional[dict[str, float]], optional): The rotation of each phase. Defaults to None.
         ticknum (int, optional): The number of ticks on the edges. Defaults to 5.
         path_type (Literal['normal', 'snakelike'], optional): The type of path. Defaults to 'normal'.
         composition_type (Literal['atomic', 'volumetric'], optional): The type of composition. Defaults to 'atomic'.
+        interactive (bool, optional): Whether to enable the interactive mode. Defaults to False.
         ax (Optional[Axes3D], optional): The axes. Defaults to None.
 
     Raises:
@@ -144,7 +148,7 @@ def scatter_quaternary(
     for i, txt in enumerate(label):
         ax.text(vertices[i, 0], vertices[i, 1], vertices[i, 2],
                 txt, size=20, color='darkslategray',
-                fontfamily=kwargs.get('fontfamily', 'Calibri'))
+                fontfamily=kwargs.pop('fontfamily', 'Calibri'))
     # Set aspect and lims and axes
     ax.set_box_aspect([1, 1, 1])
     ax.set_xlim(-0.4, 0.4)
@@ -189,7 +193,44 @@ def scatter_quaternary(
         else:
             car_coords = tet_to_car(vertices, coo)
             ax.scatter(car_coords[:, 0], car_coords[:, 1], car_coords[:, 2],  # type: ignore
-                       s=25, c=color[phase])
+                       s=25, c=color[phase], picker=interactive)
+    # Interactive mode
+    if interactive:
+        if database is None:
+            raise ValueError("The database should be provided for interactive mode.")
+
+        def _onpick(event):
+            """Scatter plot pick event."""
+            # Make a copy of the kwargs
+            # Avoid modifying the original kwargs
+            kw = kwargs.copy()
+            # Get the index of the selected point
+            index = event.ind
+            if len(index) > 1:
+                print("Multiple points selected. Zoom in to select a single point.")
+                return
+            # Get the xrd pattern of the specific point
+            pattern = database.data[index[0]]
+            # Perform postprocessing based on kwargs
+            pattern = pattern.subtract_baseline(lam=kw.pop('lam', -1))
+            pattern = pattern.smooth(
+                window=kw.pop('window', -1),
+                factor=kw.pop('factor', -1))
+            # Plot the xrd pattern of the specific point
+            if icsd is None:
+                pattern.plot(if_peak=True, **kw)
+                plt.title(f"{pattern.info.name}-{pattern.info.index}")
+                plt.show()
+            else:
+                pattern.plot_with_icsd(
+                    icsd=icsd,
+                    number=kw.pop('number', 5),
+                    cmap=kw.pop('cmap', 'tab10'),
+                    title=f"{pattern.info.name}-{pattern.info.index}",
+                    if_peak=True, **kw)
+
+        fig.canvas.mpl_connect('pick_event', _onpick)
+    # Legend
     ax.legend([Line2D([0], [0], marker='o', color='w', label=i,
                       markerfacecolor=color[i], markersize=10)
                for i in color], list(color.keys()), loc='right')

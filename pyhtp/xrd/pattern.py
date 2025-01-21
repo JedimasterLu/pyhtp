@@ -75,6 +75,8 @@ class XrdPattern:
         Returns:
             XrdPattern: A new instance of XrdPattern with baseline subtracted.
         """
+        if lam <= 0:
+            return self.copy()
         baseline = self.get_baseline(lam=lam)
         baseline = baseline[:-1]
         corrected_pattern = self.copy()
@@ -240,6 +242,7 @@ class XrdPattern:
             ax (Optional[Axes], optional): The matplotlib axes. Defaults to None.
             offset (float): The offset of the intensity.
             if_label (bool, optional): If show the label. Defaults to True.
+            if_peak (bool, optional): If show the peak. Defaults to False.
             **kwargs: The keyword arguments for the plot and get_peak.
 
         Raises:
@@ -295,16 +298,24 @@ class XrdPattern:
             icsd: ICSD,
             number: int = 5,
             cmap: Union[str, Colormap] = 'tab10',
+            title: str | None = None,
             **kwargs) -> None:
         """Plot the diffraction pattern with the matched ICSD data.
 
         Args:
             ax (Optional[Axes], optional): The matplotlib axes. Defaults to None.
             number (int, optional): The number of matched patterns. Defaults to 5.
-            **kwargs: The keyword arguments for the plot.
+            cmap (Union[str, Colormap], optional): The colormap for the matched patterns. Defaults to 'tab10'.
+            title (str, optional): The title of the plot. Defaults to None.
+            **kwargs: The keyword arguments for match and the plot
         """
         # Get the matched data
-        matched_data = self.match(icsd, number=number)
+        matched_data = self.match(
+            icsd, number=number,
+            threshold=kwargs.pop('threshold', 0.1),
+            mask=kwargs.get('mask', None),
+            param=kwargs.get('param', None),
+            mask_param=kwargs.get('mask_param', None))
         # Plot the pattern in vertical subplots
         fig, axs = plt.subplots(number + 1, 1, figsize=(6, 2 * number))
         fig.subplots_adjust(hspace=0)
@@ -318,6 +329,9 @@ class XrdPattern:
                 if_show=False, color=cmap(i),
                 angle_range=AngleRange(left=self.two_theta[0],
                                        right=self.two_theta[-1]))
+        # Set the title
+        if title:
+            axs[0].set_title(title)
         plt.show()
 
     def save_txt(self, save_dir: str | None = None) -> None:

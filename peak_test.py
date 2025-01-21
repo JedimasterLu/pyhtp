@@ -1,29 +1,23 @@
-import matplotlib.pyplot as plt
+'''
+Process the XRD data for the quaternary samples.
+'''
 import numpy as np
-from numpy.random import rand
+from pyhtp.xrd import XrdDatabase, ICSD
+from pyhtp.typing import SampleInfo, AngleRange, PeakParam
+from pyhtp.quaternary import scatter_quaternary
 
-from matplotlib.image import AxesImage
-from matplotlib.lines import Line2D
-from matplotlib.patches import Rectangle
-from matplotlib.text import Text
+sample1 = SampleInfo(
+    name='GSTSe-2', element=['Se', 'Sb', 'Ge', 'Te'],
+    angle_range=AngleRange(28, 52), temperature=350,
+    film_thickness=[12.4, 7.6, 12.4, 7.6])
+db1 = XrdDatabase(file_dir='data/GSTSe_XRD/GSTSe-2-350', info=sample1)
+icsd = ICSD(file_dir='data/GSST ICSD')
 
-# Fixing random state for reproducibility
-np.random.seed(19680801)
+label = np.zeros(400)
 
-x = np.random.rand(15)
-y = np.random.rand(15)
-z = np.random.rand(15)
-c = np.random.rand(15)
-s = np.random.rand(15) * 100
-
-
-def onpick3(event):
-    ind = event.ind
-    print('onpick3 scatter:', ind, x[ind], y[ind])
-
-
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-col = ax.scatter(x, y, z, s=s, c=c, picker=True)
-fig.canvas.mpl_connect('pick_event', onpick3)
-plt.show()
+scatter_quaternary(
+    value=label, label=('Ge', 'Sb', 'Se', 'Te'),
+    database=db1,
+    path_type='snakelike', interactive=True,
+    lam=700, window=51,
+    param=PeakParam(height=0.2, distance=0.5, prominence=0.5))
