@@ -12,7 +12,7 @@ from numpy.typing import NDArray
 from matplotlib.axes import Axes
 from matplotlib.colors import Colormap
 from pybaselines import Baseline
-from ..typing import PatternInfo, AngleRange, IcsdData
+from ..typing import PatternInfo, AngleRange, IcsdData, PeakParam
 from .icsd import ICSD
 
 
@@ -115,29 +115,33 @@ class XrdPattern:
             smoothed_pattern.intensity = interpolate_smooth(smoothed_pattern.two_theta)
         return smoothed_pattern
 
-    def get_peak(self,
-                 mask: Optional[list[AngleRange]] = None,
-                 height: float = -1,
-                 mask_height: float = -1) -> tuple[NDArray, dict]:
+    def get_peak(
+            self,
+            mask: Optional[list[AngleRange]] = None,
+            param: PeakParam | None = None,
+            mask_param: PeakParam | None = None,
+            max_intensity: float | None = None) -> tuple[NDArray, dict]:
         """Find peaks by scipy.signal.find_peaks. Please substract and smooth the data before peak detection.
 
         Args:
-            mask (Optional[list[AngleRange]], optional): The mask area to not be detected. Defaults to None.
-            threshold (float, optional): Height threshold. Defaults to -1.
-            mask_threshold (float, optional): Height threshold at masked area. Defaults to -1.
+            mask (Optional[list[AngleRange]], optional): Mask information in the form of [(mask1_left, mask1_right), (mask2_left, mask2_right) ...]. Defaults to None.
+            param (PeakParam, optional): The parameters for finding peaks. Defaults to None.
+            mask_param (PeakParam, optional): The parameters for finding peaks in the masked area. Defaults to None.
+            max_intensity (float, optional): The maximum intensity of the peaks, the parameter is for the whole database. If None, use the maximum intensity of the pattern. Defaults to None.
 
         Returns:
             tuple[NDArray, dict]: (the index of peaks in the array, properties of the peaks)
         """
+        if param is None:
+            param = PeakParam()
+        if mask_param is None:
+            mask_param = PeakParam()
+        if max_intensity is None:
+            max_intensity = np.max(self.intensity)
+
+        # Set the function to create mask bool array
         def _create_mask(mask: list[AngleRange]) -> NDArray:
-            """Create a mask for peak detection.
-
-            Args:
-                mask (list[AngleRange]): Mask information in the form of [[mask1_left, mask1_right], [mask2_left, mask2_right] ...].
-
-            Returns:
-                NDArray: The mask for peak detection. An array of bool, where True means the data is masked.
-            """
+            """Create array of bool for peak detection."""
             mask_condition = np.full(self.intensity.shape[0], False)
             for info in mask:
                 left_index = np.argwhere(self.two_theta >= info.left)[0, 0]
@@ -149,21 +153,26 @@ class XrdPattern:
             mask_condition = _create_mask(mask)
         else:
             mask_condition = np.full(self.intensity.shape[0], False)
-        if height == -1:  # Use the 1% of the maximum intensity as the threshold
-            height = 0.01 * np.max(self.intensity)
-        if mask_height == -1:  # Use the 10% of the maximum intensity as the threshold
-            mask_height = 0.1 * np.max(self.intensity)
         # Set the masked area to nan
         unmasked_intensity = self.intensity.copy()
         unmasked_intensity[np.where(mask_condition)] = np.nan
         masked_intensity = self.intensity.copy()
         masked_intensity[np.where(~mask_condition)] = np.nan
         # Find peaks
-        angle_step = self.two_theta[1] - self.two_theta[0]
+        assert isinstance(param, PeakParam)
+        assert isinstance(mask_param, PeakParam)
+        assert isinstance(max_intensity, float)
+        angle_step = np.mean(np.diff(self.two_theta))
         peak_index, properties = scipy.signal.find_peaks(
-            unmasked_intensity, height=height, distance=int(0.5 / angle_step))
+            unmasked_intensity,
+            height=param.height * max_intensity,
+            distance=int(param.distance / angle_step),
+            prominence=param.prominence * max_intensity)
         additional_index, a_properties = scipy.signal.find_peaks(
-            masked_intensity, height=mask_height, distance=int(0.5 / angle_step))
+            masked_intensity,
+            height=mask_param.height * max_intensity,
+            distance=int(mask_param.distance / angle_step),
+            prominence=mask_param.prominence * max_intensity)
         if additional_index.size > 0:
             peak_index = np.concatenate((peak_index, additional_index))
             for key, value in properties.items():
@@ -171,11 +180,12 @@ class XrdPattern:
         properties['peak_angles'] = self.two_theta[peak_index]
         return peak_index, properties
 
-    def match(self,
-              icsd: ICSD,
-              number: int = 5,
-              threshold: float = 0.1,
-              **kwargs) -> list[IcsdData]:
+    def match(
+            self,
+            icsd: ICSD,
+            number: int = 5,
+            threshold: float = 0.1,
+            **kwargs) -> list[IcsdData]:
         """Match the peaks of the pattern with the ICSD database.
 
         Args:
@@ -230,7 +240,7 @@ class XrdPattern:
             ax (Optional[Axes], optional): The matplotlib axes. Defaults to None.
             offset (float): The offset of the intensity.
             if_label (bool, optional): If show the label. Defaults to True.
-            **kwargs: The keyword arguments for the plot.
+            **kwargs: The keyword arguments for the plot and get_peak.
 
         Raises:
             ValueError: The ax is not correctly set.
@@ -241,12 +251,12 @@ class XrdPattern:
             raise ValueError('The ax is not correctly set!')
         if if_peak:
             peak_index, _ = self.get_peak(
-                height=kwargs.pop('height', -1),
-                mask_height=kwargs.pop('mask_height', -1),
-                mask=kwargs.pop('mask', None))
+                mask=kwargs.pop('mask', None),
+                param=kwargs.pop('param', None),
+                mask_param=kwargs.pop('mask_param', None))
             ax.plot(self.two_theta[peak_index],
                     self.intensity[peak_index] + offset,
-                    'x', color=kwargs.get('color', 'tab:blue'))
+                    'x', color=kwargs.get('color', 'tab:orange'))
         ax.plot(np.array(self.two_theta),
                 np.array(self.intensity) + offset,
                 label=f'{self.info.name}-{self.info.index}', **kwargs)
@@ -254,10 +264,11 @@ class XrdPattern:
             ax.set_xlabel(r'$2\theta$')
             ax.set_ylabel('Intensity')
 
-    def plot_baseline(self,
-                      lam: int = 200,
-                      ax: Optional[Axes] = None,
-                      **kwargs) -> None:
+    def plot_baseline(
+            self,
+            lam: int = 200,
+            ax: Optional[Axes] = None,
+            **kwargs) -> None:
         """Plot the baseline of the diffraction pattern.
 
         Args:
@@ -279,11 +290,12 @@ class XrdPattern:
         ax.set_xlabel(r'$2\theta$')
         ax.set_ylabel('Intensity')
 
-    def plot_with_icsd(self,
-                       icsd: ICSD,
-                       number: int = 5,
-                       cmap: Union[str, Colormap] = 'tab10',
-                       **kwargs) -> None:
+    def plot_with_icsd(
+            self,
+            icsd: ICSD,
+            number: int = 5,
+            cmap: Union[str, Colormap] = 'tab10',
+            **kwargs) -> None:
         """Plot the diffraction pattern with the matched ICSD data.
 
         Args:

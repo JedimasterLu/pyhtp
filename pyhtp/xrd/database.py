@@ -66,6 +66,26 @@ class XrdDatabase:
         else:
             raise ValueError('Either file_dir or data should be set!')
 
+    @property
+    def intensity(self) -> NDArray:
+        """Return the intensity of all patterns.
+
+        Returns:
+            NDArray: The intensity of all patterns. Shape: (n_patterns, n_points).
+        """
+        min_length = min(len(pattern.intensity) for pattern in self.data)
+        return np.array([pattern.intensity[:min_length] for pattern in self.data])
+
+    @property
+    def two_theta(self) -> NDArray:
+        """Return the two_theta of all patterns.
+
+        Returns:
+            NDArray: The two_theta of all patterns. Shape: (n_patterns, n_points).
+        """
+        min_length = min(len(pattern.two_theta) for pattern in self.data)
+        return np.array([pattern.two_theta[:min_length] for pattern in self.data])
+
     def _read_data(self, file_dir: list[str], info: SampleInfo) -> list[XrdPattern]:
         """Read the data from the file directory.
 
@@ -249,9 +269,11 @@ class XrdDatabase:
                     window=kwargs.get('window', 101),
                     factor=kwargs.get('factor', 0.5))
             peaks.append(
-                pattern.get_peak(mask=kwargs.get('mask', None),
-                                 height=kwargs.get('height', -1),
-                                 mask_height=kwargs.get('mask_height', -1)))
+                pattern.get_peak(
+                    mask=kwargs.get('mask', None),
+                    param=kwargs.get('param', None),
+                    mask_param=kwargs.get('mask_param', None),
+                    max_intensity=self.intensity.max()))
         # Plot the patterns
         fig = None
         if ax is None:
@@ -265,7 +287,7 @@ class XrdDatabase:
                              if_label=False, alpha=0.8)
         if style == 'stack':
             # Get the margin from the maximum intensity variation of the patterns
-            margin = max(pattern.intensity.max() - pattern.intensity.min() for pattern in patterns)
+            margin = max(self.intensity.max(axis=1))
             for i, (pattern, peak) in enumerate(zip(patterns, peaks)):
                 pattern.plot(ax=ax, color=cmap(i / len(patterns)),
                              offset=i * margin, alpha=0.8, if_label=False)
@@ -331,7 +353,6 @@ class XrdDatabase:
             index = list(range(len(self.data)))
         # Select the patterns to plot
         patterns = [self.data[i] for i in index]
-        peaks: list[tuple] = []
         # Process the patterns with kwargs given
         for i, pattern in enumerate(patterns):
             if amorphous_index >= 0:
@@ -342,10 +363,6 @@ class XrdDatabase:
                 patterns[i] = patterns[i].smooth(
                     window=kwargs.get('window', 101),
                     factor=kwargs.get('factor', 0.5))
-            peaks.append(
-                pattern.get_peak(mask=kwargs.get('mask', None),
-                                 height=kwargs.get('height', -1),
-                                 mask_height=kwargs.get('mask_height', -1)))
         # Plot the patterns
         fig = None
         if ax is None:
@@ -357,11 +374,10 @@ class XrdDatabase:
         # Convert all the intensity data into a surface
         x = np.array(patterns[0].two_theta)
         y = np.arange(len(patterns))
-        X, Y = np.meshgrid(x, y)  # pylint: disable=invalid-name
-        min_length = min(len(pattern.intensity) for pattern in patterns)
-        Z = np.array([pattern.intensity[:min_length] for pattern in patterns])
+        x_value, y_value = np.meshgrid(x, y)
+        z_value = self.intensity[index]
         # Plot the surface
-        ax.plot_surface(X, Y, Z, cmap=cmap)
+        ax.plot_surface(x_value, y_value, z_value, cmap=cmap)
         ax.set_box_aspect([4, 3, 1])
         # Save the figure
         if save_path and fig:
@@ -372,7 +388,7 @@ class XrdDatabase:
             k_value: tuple[int, int] | int = (3, 10),
             full_run: bool = False,
             **kwargs) -> NDArray:
-        """_summary_
+        """Cluster the diffraction patterns based on peaks' positions.
 
         Args:
             k_value (tuple[int, int], optional): n_cluster range. Defaults to (3, 10).
@@ -403,8 +419,9 @@ class XrdDatabase:
         for pattern in db.data:
             _, properties = pattern.get_peak(
                 mask=kwargs.get('mask', None),
-                height=kwargs.get('height', -1),
-                mask_height=kwargs.get('mask_height', -1))
+                param=kwargs.get('param', None),
+                mask_param=kwargs.get('mask_param', None),
+                max_intensity=self.intensity.max())
             peak_angle.append(properties['peak_angles'])
             peak_intensity.append(properties['peak_heights'])
         # The length of elements in peak_data are not the same
@@ -472,8 +489,9 @@ class XrdDatabase:
         for pattern in db.data:
             _, properties = pattern.get_peak(
                 mask=kwargs.get('mask', None),
-                height=kwargs.get('height', -1),
-                mask_height=kwargs.get('mask_height', -1))
+                param=kwargs.get('param', None),
+                mask_param=kwargs.get('mask_param', None),
+                max_intensity=self.intensity.max())
             peak_data.append(properties['peak_angles'])
         # Get the max peak number as k_value for kmeans
         max_peak_num = max(len(i) for i in peak_data)

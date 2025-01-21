@@ -129,3 +129,18 @@ class BandGapLegacy(NamedTuple):
     direct_forbidden: float
     indirect_allowed: float
     indirect_forbidden: float
+
+
+class PeakParam(NamedTuple):
+    """The parameters for finding peaks in a diffraction pattern.
+    - Please refer to https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.find_peaks.html for the meaning of each parameter.
+    - Unlike the original scipy.signal.find_peaks, the units of parameters are transformed to percentage and angle.
+
+    Args:
+        height (float): The minimum height of the peak (percentage of the maximum intensity).
+        distance (float): The minimum distance between peaks (two theta angle).
+        prominence (float): The minimum prominence of the peak (percentage of the maximum intensity).
+    """
+    height: float = 0.01
+    distance: float = 0.5
+    prominence: float = 0.05
