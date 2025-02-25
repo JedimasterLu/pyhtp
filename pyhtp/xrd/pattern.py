@@ -33,8 +33,8 @@ class XRDPattern:
             self,
             info: PatternInfo,
             file_path: str | None = None,
-            two_theta: NDArray[np.float_ | np.int_] | list[float | int] | None = None,
-            intensity: NDArray[np.float_ | np.int_] | list[float | int] | None = None):
+            two_theta: NDArray[np.float64 | np.int_] | list[float | int] | None = None,
+            intensity: NDArray[np.float64 | np.int_] | list[float | int] | None = None):
         """Create a instance of XRDPattern.
 
         There are two ways to create a XRDPattern instance
@@ -44,9 +44,9 @@ class XRDPattern:
         Args:
             info (PatternInfo): The information of the pattern.
             file_path (str, optional): The path of the .xy file. Defaults to None.
-            two_theta (NDArray[np.float_ | np.int_] | list[float | int] | None, optional):
+            two_theta (NDArray[np.float64 | np.int_] | list[float | int] | None, optional):
                 The 2 theta angle of the pattern. Defaults to None.
-            intensity (NDArray[np.float_ | np.int_] | list[float | int] | None, optional):
+            intensity (NDArray[np.float64 | np.int_] | list[float | int] | None, optional):
                 The intensity of the pattern. Defaults to None.
         """
         if file_path is None and any([two_theta is None, intensity is None]):
@@ -206,7 +206,7 @@ class XRDPattern:
             param: PeakParam | None = None,
             mask_param: PeakParam | None = None,
             max_intensity: float | None = None
-    ) -> tuple[NDArray[np.int_], dict[str, NDArray[np.float_]]]:
+    ) -> tuple[NDArray[np.int_], dict[str, NDArray[np.float64]]]:
         """Find peaks by scipy.signal.find_peaks.
 
         Please substract and smooth the data before peak detection to get better results.

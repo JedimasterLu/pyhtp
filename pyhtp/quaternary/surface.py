@@ -14,7 +14,7 @@ from ..typing import SampleInfo
 
 
 def plot_quat_surface(
-        value: list[float] | NDArray[np.float_],
+        value: list[float] | NDArray[np.float64],
         axis_label: tuple[str, str, str, str],
         coord: list[tuple[float, float, float, float]] | NDArray | None = None,  # type: ignore
         info: SampleInfo | None = None,

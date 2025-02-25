@@ -19,7 +19,7 @@ from ..typing import SampleInfo, AngleRange, PatternInfo, PeakParam
 from .pattern import XRDPattern
 from .cifdatabase import CIFDatabase
 
-PeakInfoType = tuple[NDArray[np.int_], dict[str, NDArray[np.float_]]]
+PeakInfoType = tuple[NDArray[np.int_], dict[str, NDArray[np.float64]]]
 
 
 class XRDDatabase:
@@ -116,7 +116,7 @@ class XRDDatabase:
             pattern.two_theta = pattern.two_theta[:min_length]
 
     @property
-    def intensity(self) -> NDArray[np.float_]:
+    def intensity(self) -> NDArray[np.float64]:
         """Return the intensity of all patterns.
 
         Returns:
@@ -125,7 +125,7 @@ class XRDDatabase:
         return np.array([pattern.intensity for pattern in self.data])
 
     @property
-    def two_theta(self) -> NDArray[np.float_]:
+    def two_theta(self) -> NDArray[np.float64]:
         """Return the two_theta of all patterns.
 
         Returns:
@@ -475,7 +475,7 @@ class XRDDatabase:
             self,
             param: PeakParam | None = None,
             mask: AngleRange | list[AngleRange] | None = None,
-            mask_param: PeakParam | None = None) -> list[NDArray[np.float_]]:
+            mask_param: PeakParam | None = None) -> list[NDArray[np.float64]]:
         """Return the peak two_theta of all the patterns.
 
         Args:
@@ -559,9 +559,9 @@ class XRDDatabase:
 
     def peak_encoder(
             self,
-            two_theta: list[NDArray[np.float_]],
+            two_theta: list[NDArray[np.float64]],
             two_theta_tol: int | float = 0.5,
-            peak_number: int | None = None) -> NDArray[np.float_]:
+            peak_number: int | None = None) -> NDArray[np.float64]:
         """Encode the peaks based on the combine peaks of the sample.
 
         The resulting peak vector of all the patterns have the same length as the combine peaks.
@@ -596,8 +596,8 @@ class XRDDatabase:
 
     @staticmethod
     def existing_two_theta(
-            two_theta: list[NDArray[np.float_]],
-            peak_number: int | None = None) -> NDArray[np.float_]:
+            two_theta: list[NDArray[np.float64]],
+            peak_number: int | None = None) -> NDArray[np.float64]:
         """Return the combined diffraction peaks of all the patterns.
 
         The peaks are clustered by kmeans.
