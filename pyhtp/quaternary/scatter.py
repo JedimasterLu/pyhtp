@@ -188,26 +188,50 @@ def plot_quat_scatter(
         ax: Axes3D | None = None,
         json_path: str = 'modifier.json',
         ylim: tuple[float | int, float | int] | None = None,
+        rotate_label: int = 0,
         **kwargs) -> None:
-    """_summary_
+    """Plot the scatter plot of quaternary phase diagram.
 
     Args:
-        label (list[str  |  int] | NDArray): _description_
-        xrd_database (XRDDatabase | None, optional): _description_. Defaults to None.
-        cif_database (CIFDatabase | None, optional): _description_. Defaults to None.
-        xrf_database (XRFDatabase | None, optional): _description_. Defaults to None.
-        coord (list[tuple[float, float, float, float]] | NDArray | None, optional): _description_. Defaults to None.
-        tick_number (int, optional): _description_. Defaults to 5.
-        path_type (Literal[&#39;normal&#39;, &#39;snakelike&#39;], optional): _description_. Defaults to 'normal'.
-        composition_type (Literal[&#39;atomic&#39;, &#39;volumetric&#39;], optional): _description_. Defaults to 'atomic'.
-        interactive (bool, optional): _description_. Defaults to False.
-        ax (Axes3D | None, optional): _description_. Defaults to None.
-        json_path (str, optional): _description_. Defaults to 'modifier.json'.
-        ylim (tuple[float  |  int, float  |  int] | None, optional): _description_. Defaults to None.
+        label (list[str | int] | NDArray): The label of each point. The label should be
+            a 1D list or 1D array.
+        xrd_database (XRDDatabase | None, optional): The XRDDatabase for coordinate
+            generation. Defaults to None.
+        cif_database (CIFDatabase | None, optional): The CIFDatabase for interactive mode.
+            Defaults to None.
+        xrf_database (XRFDatabase | None, optional): The XRFDatabase for XRF based
+            coordinate generation. Defaults to None.
+        coord (list[tuple[float, float, float, float]] | NDArray | None, optional): 
+            The quaternary coordinate for each point. Defaults to None. If None, the
+            coordinate will be generated from either xrd_database or xrf_database.
+            If xrf_database is provided, the coordinate will be generated from XRF.
+        tick_number (int, optional): The number of ticks on each side of the quaternary plot.
+            Defaults to 5.
+        path_type (Literal[&#39;normal&#39;, &#39;snakelike&#39;], optional): 
+            For normal type, the points of odd and even lines are in the same order.
+            For snakelike type, the odd and even lines are in the opposite order.
+            Defaults to 'normal'.
+            For example
+            - normal: [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]]
+            - snakelike: [[0, 1, 2, 3], [7, 6, 5, 4], [8, 9, 10, 11], [15, 14, 13, 12]]
+        composition_type (Literal[&#39;atomic&#39;, &#39;volumetric&#39;], optional):
+            The composition to display. Defaults to 'atomic'.
+        interactive (bool, optional): Defaults to False. In the interactive mode,
+            you can double left click on a point to see the XRD pattern of the specific point.
+            You can also double right click to refresh the scatter plot with new labels.
+        ax (Axes3D | None, optional): Defaults to None.
+        json_path (str, optional): The modifier file for plot refresh in interactive mode.
+            Defaults to 'modifier.json'.
+        ylim (tuple[float | int, float | int] | None, optional): The ylim of the left click
+            displayed pattern in interactive mode. Defaults to None. If None, the ylim will
+            be automatically set by matplotlib.
+        rotate_label (int, optional): The times to rotate 90 degrees for the labels.
+            Defaults to 0. The rotate direction is clockwise (viewing from upside).
+        **kwargs: Additional keyword arguments for the scatter plot.
 
     Raises:
-        ValueError: _description_
-        ValueError: _description_
+        ValueError: Either XRD or XRF database should be provided.
+        ValueError: XRDDatabase should be provided for interactive mode.
     """
     # Check if the ax is None
     if ax is None or 'fig' not in kwargs:
@@ -249,7 +273,7 @@ def plot_quat_scatter(
         [0.5, np.sqrt(3) / 6, np.sqrt(6) / 3]])
     build_tetrahedron(
         ax, vertices, axis_label, tick_number,
-        fontfamily=kwargs.get('fontfamily', 'Calibri'))
+        fontfamily=kwargs.get('fontfamily', 'DejaVu Sans'))
 
     # Convert the label to NDArray[str] to avoid type error
     label = np.array(label).astype(str)
@@ -261,6 +285,11 @@ def plot_quat_scatter(
         label = label.reshape(side_num, side_num)
         label[1::2] = label[1::2, ::-1]
         label = label.flatten()
+    
+    # Rotate the label
+    if rotate_label != 0:
+        label = np.rot90(
+            label.reshape(side_num, side_num), k=rotate_label).flatten()
 
     # Color: {'phase_name': '#RRGGBBAA'}
     if color is None:
@@ -304,7 +333,8 @@ def plot_quat_scatter(
                 _, ax = plt.subplots()
                 pattern.plot(ax=ax, max_intensity=xrd_database.intensity.max(), **kw)
                 ax.set_title(f"{pattern.info.name}-{pattern.info.index}")
-                ax.set_ylim(*ylim)
+                if ylim:
+                    ax.set_ylim(*ylim)
                 plt.show()
             else:
                 pattern.plot_with_ref(
@@ -332,7 +362,7 @@ def plot_quat_scatter(
                 # Redraw the scatter with new labels
                 build_tetrahedron(
                     ax, vertices, axis_label, tick_number,
-                    fontfamily=kwargs.get('fontfamily', 'Calibri'))
+                    fontfamily=kwargs.get('fontfamily', 'DejaVu Sans'))
                 _single_scatter(ax, color, new_label, car_coords, interactive)
                 # Refresh the plot
                 plt.tight_layout()

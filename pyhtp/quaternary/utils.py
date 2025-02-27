@@ -144,6 +144,7 @@ def build_tetrahedron(
         [0.5, np.sqrt(3) / 6, np.sqrt(6) / 3]])
     # Move the center of the tetrahedron to the origin
     vertices -= np.mean(vertices, axis=0)
+    # Add the tetrahedron to the plot
     faces = [[vertices[j] for j in [0, 1, 2]],
              [vertices[j] for j in [0, 1, 3]],
              [vertices[j] for j in [0, 2, 3]],
@@ -152,15 +153,24 @@ def build_tetrahedron(
         Poly3DCollection(faces, alpha=0.05, linewidths=1,
                          edgecolors='darkslategray'))
     # Add labels to the vertices
+    pad = 0.08
     for i, txt in enumerate(axis_label):
-        ax.text(vertices[i, 0], vertices[i, 1], vertices[i, 2],
-                txt, size=20, color='darkslategray',
-                fontfamily=fontfamily)
+        if i == 0:
+            coord = vertices[i] + np.array([-np.sqrt(3) * pad / 2, - pad / 2, - pad / 2])
+        elif i == 1:
+            coord = vertices[i] + np.array([np.sqrt(3) * pad / 2, - pad / 2, - pad / 2])
+        elif i == 2:
+            coord = vertices[i] + np.array([0, pad, - pad / 2])
+        else:
+            coord = vertices[i] + np.array([0, 0, pad / 2])
+        ax.text(coord[0], coord[1], coord[2], txt, size=18,
+                color='darkslategray', fontfamily=fontfamily)
     # Set aspect and lims and axes
     ax.set_box_aspect([1, 1, 1])
-    ax.set_xlim(-0.4, 0.4)
-    ax.set_ylim(-0.4, 0.4)
-    ax.set_zlim(-0.4, 0.4)
+    lim_value = 0.38
+    ax.set_xlim(-lim_value, lim_value)
+    ax.set_ylim(-lim_value, lim_value)
+    ax.set_zlim(-lim_value, lim_value)
     ax.set_axis_off()
     ax.set_proj_type('persp')
     # Add ticks on the edges

@@ -81,14 +81,14 @@ class EllipDatabase:
     def get_property(
             self,
             property_name: Literal['n', 'k', 'absorp'],
-            wavelength: float | list[float] | NDArray[np.float_] | None = None,
-            index: int | list[int] | NDArray[np.int_] = -1) -> NDArray[np.float_]:
+            wavelength: float | list[float] | NDArray[np.float64] | None = None,
+            index: int | list[int] | NDArray[np.int_] = -1) -> NDArray[np.float64]:
         """Get specific property of the sample.
 
         Args:
             property_name (Literal['n', 'k', 'absorp']): The property to get. 'n' for
                 refractive index, 'k' for extinction coefficient, 'absorp' for absorption coefficient.
-            wavelength (float | list[float] | NDArray[np.float_], optional): The wavelength
+            wavelength (float | list[float] | NDArray[np.float64], optional): The wavelength
                 to get the property. If None, return the whole property. Defaults to None.
                 If multiple values are provided, return the property of these wavelengths. The shape
                 of the return value is (len(index), len(wavelength)).
@@ -134,9 +134,9 @@ class EllipDatabase:
     def fom(
         crystalline_data: EllipDatabase,
         amorphous_data: EllipDatabase,
-        wavelength: float | list[float] | NDArray[np.float_] | None = None,
+        wavelength: float | list[float] | NDArray[np.float64] | None = None,
         index: int | list[int] | NDArray[np.int_] = -1,
-    ) -> NDArray[np.float_]:
+    ) -> NDArray[np.float64]:
         """Calculate the figure of merit of the sample from two EllipDatabase.
 
         The FOM is defined as: FOM = (n_cry - n_amo) / (k_cry + k_amo)
@@ -144,13 +144,13 @@ class EllipDatabase:
         Args:
             crystalline_data (EllipDatabase): The ellipsometry data of the crystalline sample.
             amorphous_data (EllipDatabase): The ellipsometry data of the amorphous sample.
-            wavelength (float | list[float] | NDArray[np.float_] | None, optional): 
+            wavelength (float | list[float] | NDArray[np.float64] | None, optional): 
                 The parameter pass to get_property. Defaults to None.
             index (int | list[int] | NDArray[np.int_], optional): 
                 The parameter pass to get_property. Defaults to -1.
 
         Returns:
-            NDArray[np.float_]: The figure of merit of the sample.
+            NDArray[np.float64]: The figure of merit of the sample.
                 Shape: (len(index), len(wavelength)).
         """
         n_cry = crystalline_data.get_property('n', wavelength, index)

@@ -28,19 +28,19 @@ class EllipSpectrum:
 
     def __init__(
             self,
-            n: NDArray[np.float_] | list[float],
-            k: NDArray[np.float_] | list[float],
+            n: NDArray[np.float64] | list[float],
+            k: NDArray[np.float64] | list[float],
             info: SpectrumInfo,
-            wavelength: NDArray[np.float_] | list[float] | None = None):
+            wavelength: NDArray[np.float64] | list[float] | None = None):
         """Create an instance of EllipSpectrum.
 
         The class does not support import from a file. The refractive index and extinction coefficient
         should be provided.
 
         Args:
-            n (NDArray[np.float_] | list[float]): Refractive index n.
-            k (NDArray[np.float_] | list[float]): Extinction coefficient k.
-            wavelength (NDArray[np.float_] | list[float] | None): Wavelength array (nm). If none,
+            n (NDArray[np.float64] | list[float]): Refractive index n.
+            k (NDArray[np.float64] | list[float]): Extinction coefficient k.
+            wavelength (NDArray[np.float64] | list[float] | None): Wavelength array (nm). If none,
                 determine by the info.wavelength_range. Defaults to None.
             info (SpectrumInfo): Info for the spectrum. Please refer to the docstring of SpectrumInfo.
                 Contains the name, wavelength range, element, temperature, and index of the spectrum.

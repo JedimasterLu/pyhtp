@@ -6,7 +6,8 @@ This module contains the class for XRD database.
 """
 from __future__ import annotations
 import os
-from typing import Optional, Literal
+from typing import Literal
+from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 import matplotlib.pyplot as plt
 from numpy.typing import NDArray
@@ -19,7 +20,7 @@ from ..typing import SampleInfo, AngleRange, PatternInfo, PeakParam
 from .pattern import XRDPattern
 from .cifdatabase import CIFDatabase
 
-PeakInfoType = tuple[NDArray[np.int_], dict[str, NDArray[np.float_]]]
+PeakInfoType = tuple[NDArray[np.int_], dict[str, NDArray[np.float64]]]
 
 
 class XRDDatabase:
@@ -116,7 +117,7 @@ class XRDDatabase:
             pattern.two_theta = pattern.two_theta[:min_length]
 
     @property
-    def intensity(self) -> NDArray[np.float_]:
+    def intensity(self) -> NDArray[np.float64]:
         """Return the intensity of all patterns.
 
         Returns:
@@ -125,7 +126,7 @@ class XRDDatabase:
         return np.array([pattern.intensity for pattern in self.data])
 
     @property
-    def two_theta(self) -> NDArray[np.float_]:
+    def two_theta(self) -> NDArray[np.float64]:
         """Return the two_theta of all patterns.
 
         Returns:
@@ -283,41 +284,75 @@ class XRDDatabase:
             self,
             baseline_lam: int = 200,
             window: int = 51,
-            spline_lam: float | None = None) -> XRDDatabase:
+            spline_lam: float | None = None,
+            concurrent: bool = True,
+            **kwargs) -> XRDDatabase:
         """Post-process the diffraction patterns.
 
-        Please refer to XRDPattern.postprocess for more information.
+        Please refer to XRDPattern.postprocess for more information. If the data is large
+        enough (len(self.data) > 100), the function will use the concurrent method to process
+        the data. A ProcessPoolExecutor with 4 workers and a chunksize of 10 will be used.
+        The worker number and chunksize is tested on my computer. You can change the number by
+        passing kwargs to the function.
 
         Args:
             baseline_lam (int, optional): Subtract parameter. Defaults to 200.
             window (int, optional): The window size of the smoothing. Defaults to 101.
             spline_lam (float | None, optional): The lambda of the spline. Defaults to None.
+            concurrent (bool, optional): If True, the function will use the concurrent method
+                to process the data if self.data is large. Defaults to True.
+            **kwargs: Other arguments for ProcessPool.
+                - max_workers: The maximum number of workers. Defaults to 4.
+                - chunksize: The chunksize of the data. Defaults to 10.
 
         Returns:
             XRDDatabase: The post-processed XRDDatabase object.
         """
-        return self.subtract_baseline(
-            baseline_lam=baseline_lam).smooth(
-                window=window, spline_lam=spline_lam)
+        if len(self.data) < 100 or not concurrent:
+            return self.subtract_baseline(
+                baseline_lam=baseline_lam).smooth(
+                    window=window, spline_lam=spline_lam)
+        else:
+            new_db = self.copy()
+            with ProcessPoolExecutor(max_workers=kwargs.get('max_workers', 4)) as executor:
+                new_db.data = list(
+                    executor.map(
+                        self._concurrent_process,
+                        self.data,
+                        [baseline_lam] * len(self.data),
+                        [window] * len(self.data),
+                        [spline_lam] * len(self.data),
+                        chunksize=kwargs.get('chunksize', 10)))
+            return new_db
+    
+    @staticmethod
+    def _concurrent_process(
+        pattern: XRDPattern,
+        baseline_lam: int,
+        window: int,
+        spline_lam: float | None) -> XRDPattern:
+        """Process the pattern with the given parameters."""
+        return pattern.postprocess(
+            baseline_lam=baseline_lam, window=window, spline_lam=spline_lam)
 
     def plot(
             self,
             index: list[int] | None = None,
             style: Literal['combine', 'stack'] = 'combine',
             cmap: str | Colormap = 'viridis',
-            ax: Optional[Axes] = None,
+            ax: Axes | None = None,
             amorphous_index: int = -1,
             **kwargs) -> None:
         """Plot the diffraction patterns.
 
         Args:
-            index (Optional[list[int]], optional): The index of patterns to plot.
+            index (list[int]] | None, optional): The index of patterns to plot.
                 If None, all the patterns will be plot. Defaults to None.
             style (Literal['combine', 'stack'], optional): Plot mode. For combine mode,
                 all the patterns are overlapped without any offset. For stack mode, the patterns
                 are stacked with an offset from bottom to the top. In stack mode, the peak will
                 be marked. Defaults to 'combine'.
-            ax (Optional[Axes], optional): The axes to plot. Defaults to None.
+            ax (Axes | None, optional): The axes to plot. Defaults to None.
             amorphous_index (int, optional): The index of a reference amorphous pattern.
                 If set, intensities will be subtracted by the reference. Defaults to -1.
             **kwargs: Other arguments for ``XRDPattern.get_peak()`` and plot. Please refer to the
@@ -425,7 +460,7 @@ class XRDDatabase:
         # Plot the patterns
         fig = None
         if ax is None:
-            fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+            fig, ax = plt.subplots(subplot_kw={'projection': '3d'})  # type: ignore
             fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
         assert ax
         # Convert all the intensity data into a surface
@@ -475,7 +510,7 @@ class XRDDatabase:
             self,
             param: PeakParam | None = None,
             mask: AngleRange | list[AngleRange] | None = None,
-            mask_param: PeakParam | None = None) -> list[NDArray[np.float_]]:
+            mask_param: PeakParam | None = None) -> list[NDArray[np.float64]]:
         """Return the peak two_theta of all the patterns.
 
         Args:
@@ -559,9 +594,9 @@ class XRDDatabase:
 
     def peak_encoder(
             self,
-            two_theta: list[NDArray[np.float_]],
+            two_theta: list[NDArray[np.float64]],
             two_theta_tol: int | float = 0.5,
-            peak_number: int | None = None) -> NDArray[np.float_]:
+            peak_number: int | None = None) -> NDArray[np.float64]:
         """Encode the peaks based on the combine peaks of the sample.
 
         The resulting peak vector of all the patterns have the same length as the combine peaks.
@@ -596,8 +631,8 @@ class XRDDatabase:
 
     @staticmethod
     def existing_two_theta(
-            two_theta: list[NDArray[np.float_]],
-            peak_number: int | None = None) -> NDArray[np.float_]:
+            two_theta: list[NDArray[np.float64]],
+            peak_number: int | None = None) -> NDArray[np.float64]:
         """Return the combined diffraction peaks of all the patterns.
 
         The peaks are clustered by kmeans.

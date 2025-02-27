@@ -14,7 +14,7 @@ from ..typing import SampleInfo
 
 
 def plot_quat_surface(
-        value: list[float] | NDArray[np.float_],
+        value: list[float] | NDArray[np.float64],
         axis_label: tuple[str, str, str, str],
         coord: list[tuple[float, float, float, float]] | NDArray | None = None,  # type: ignore
         info: SampleInfo | None = None,
@@ -79,7 +79,7 @@ def plot_quat_surface(
         [0.5, np.sqrt(3) / 6, np.sqrt(6) / 3]])
     build_tetrahedron(
         ax, vertices, axis_label, tick_number,
-        fontfamily=kwargs.get('fontfamily', 'Calibri'))
+        fontfamily=kwargs.get('fontfamily', 'DejaVu Sans'))
 
     # The original coords are in tetrahedron coordinates
     # Convert to cartesian coordinates
@@ -116,6 +116,6 @@ def plot_quat_surface(
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=ax, shrink=0.5, pad=-0.05)
     plt.setp(plt.getp(cbar.ax.axes, 'yticklabels'),
-             fontfamily=kwargs.get('fontfamily', 'Calibri'))
+             fontfamily=kwargs.get('fontfamily', 'DejaVu Sans'))
 
     plt.tight_layout()

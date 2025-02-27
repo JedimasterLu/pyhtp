@@ -239,15 +239,15 @@ class XRFDatabase:
 
     def get_composition(
             self,
-            x: float | list[float] | NDArray[np.float_],
-            y: float | list[float] | NDArray[np.float_],
+            x: float | list[float] | NDArray[np.float64],
+            y: float | list[float] | NDArray[np.float64],
             order: tuple[str, str, str, str] | None = None) -> NDArray:
         """Get the composition of the XRF data.
 
         Args:
-            x (float | list[float] | NDArray[np.float_]):
+            x (float | list[float] | NDArray[np.float64]):
                 The x coordinate of the point. The range of x is [0, 1].
-            y (float | list[float] | NDArray[np.float_]):
+            y (float | list[float] | NDArray[np.float64]):
                 The y coordinate of the point. The range of y is [0, 1].
             order (tuple[str, str, str, str] | None, optional):
                 The order of the elements. If None, the order of the elements will be
