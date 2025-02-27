@@ -435,7 +435,7 @@ class XRDPattern:
             mask_param=kwargs.get('mask_param', None),
             max_intensity=kwargs.get('max_intensity', None))
         # Plot the pattern in vertical subplots
-        fig, axs = plt.subplots(number + 1, 1, figsize=(6, 2 * number))
+        fig, axs = plt.subplots(number + 1, 1, figsize=(6, 2 * number), sharex=True)
         fig.subplots_adjust(hspace=0)
         self.plot(ax=axs[0], **kwargs)  # type: ignore
         if ylim:
