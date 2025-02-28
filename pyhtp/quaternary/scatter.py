@@ -188,7 +188,7 @@ def plot_quat_scatter(
         ax: Axes3D | None = None,
         json_path: str = 'modifier.json',
         ylim: tuple[float | int, float | int] | None = None,
-        rotate_label: int = 0,
+        rotate90: int = 0,
         **kwargs) -> None:
     """Plot the scatter plot of quaternary phase diagram.
 
@@ -201,13 +201,13 @@ def plot_quat_scatter(
             Defaults to None.
         xrf_database (XRFDatabase | None, optional): The XRFDatabase for XRF based
             coordinate generation. Defaults to None.
-        coord (list[tuple[float, float, float, float]] | NDArray | None, optional): 
+        coord (list[tuple[float, float, float, float]] | NDArray | None, optional):
             The quaternary coordinate for each point. Defaults to None. If None, the
             coordinate will be generated from either xrd_database or xrf_database.
             If xrf_database is provided, the coordinate will be generated from XRF.
         tick_number (int, optional): The number of ticks on each side of the quaternary plot.
             Defaults to 5.
-        path_type (Literal[&#39;normal&#39;, &#39;snakelike&#39;], optional): 
+        path_type (Literal[&#39;normal&#39;, &#39;snakelike&#39;], optional):
             For normal type, the points of odd and even lines are in the same order.
             For snakelike type, the odd and even lines are in the opposite order.
             Defaults to 'normal'.
@@ -226,7 +226,8 @@ def plot_quat_scatter(
             displayed pattern in interactive mode. Defaults to None. If None, the ylim will
             be automatically set by matplotlib.
         rotate_label (int, optional): The times to rotate 90 degrees for the labels.
-            Defaults to 0. The rotate direction is clockwise (viewing from upside).
+            Defaults to 0. The rotate direction is depending on the sequence of axis_label
+            and xrd_database.info.elements, which is current a bug.
         **kwargs: Additional keyword arguments for the scatter plot.
 
     Raises:
@@ -285,11 +286,11 @@ def plot_quat_scatter(
         label = label.reshape(side_num, side_num)
         label[1::2] = label[1::2, ::-1]
         label = label.flatten()
-    
+
     # Rotate the label
-    if rotate_label != 0:
-        label = np.rot90(
-            label.reshape(side_num, side_num), k=rotate_label).flatten()
+    if rotate90 != 0:
+        coord = np.rot90(
+            coord.reshape(side_num, side_num, 4), rotate90, (0, 1)).reshape(-1, 4)
 
     # Color: {'phase_name': '#RRGGBBAA'}
     if color is None:

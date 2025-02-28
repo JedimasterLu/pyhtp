@@ -324,13 +324,13 @@ class XRDDatabase:
                         [spline_lam] * len(self.data),
                         chunksize=kwargs.get('chunksize', 10)))
             return new_db
-    
+
     @staticmethod
     def _concurrent_process(
-        pattern: XRDPattern,
-        baseline_lam: int,
-        window: int,
-        spline_lam: float | None) -> XRDPattern:
+            pattern: XRDPattern,
+            baseline_lam: int,
+            window: int,
+            spline_lam: float | None) -> XRDPattern:
         """Process the pattern with the given parameters."""
         return pattern.postprocess(
             baseline_lam=baseline_lam, window=window, spline_lam=spline_lam)
