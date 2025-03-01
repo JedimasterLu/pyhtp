@@ -129,7 +129,8 @@ def _multi_scatter(
 
 def label_modify(
         label: NDArray,
-        file_name: str) -> NDArray:
+        file_name: str,
+        index_map: NDArray[np.int_] | None = None) -> NDArray:
     """Modify the label based on a json file.
     The json file contains key-value pairs of 3 kinds:
     1. "a": [j1, j2, j3, j4] to tansform the label of j1-j4 to a.
@@ -139,6 +140,9 @@ def label_modify(
     Args:
         label (NDArray): The label of each point.
         file_name (str): The json file name.
+        index_map (NDArray[np.int_] | None, optional): The index mapping
+            for the label. Defaults to None. If None, the index mapping
+            will be the same as the label.
 
     Returns:
         NDArray: The modified label.
@@ -154,7 +158,11 @@ def label_modify(
             raise ValueError("The value should be a list.")
         # Case 1
         if isinstance(value[0], int):
-            label[value] = key
+            if index_map is not None:
+                transform_value = index_map[value]
+            else:
+                transform_value = value
+            label[transform_value] = key
         # Case 2
         if isinstance(value[0], str):
             for i in value:
@@ -162,10 +170,15 @@ def label_modify(
     return label
 
 
-def _single_scatter(ax, color, label, car_coords, interactive):
+def _single_scatter(
+        ax: Axes3D,
+        color: dict[str, str],
+        label: NDArray[np.str_],
+        car_coords: NDArray[np.float64],
+        interactive: bool):
     markercolor = [color[i] for i in label]
     ax.scatter(
-        car_coords[:, 0], car_coords[:, 1], car_coords[:, 2],
+        car_coords[:, 0], car_coords[:, 1], car_coords[:, 2],  # type: ignore
         c=markercolor, s=25, picker=interactive)
     ax.legend([Line2D([0], [0], marker='o', color='w', label=i,
                       markerfacecolor=color[i], markersize=10)
@@ -276,37 +289,43 @@ def plot_quat_scatter(
         ax, vertices, axis_label, tick_number,
         fontfamily=kwargs.get('fontfamily', 'DejaVu Sans'))
 
+    side_num = int(np.sqrt(len(coord)))
+
+    # If in snakelike mode, the index of the picked point needs to be converted
+    index_map = np.arange(len(label))
+    if path_type == 'snakelike':
+        index_map = index_map.reshape(side_num, side_num)
+        index_map[1::2] = index_map[1::2, ::-1]
+        index_map = index_map.flatten()
+
     # Convert the label to NDArray[str] to avoid type error
     label = np.array(label).astype(str)
-    label = label_modify(label, file_name=json_path)
 
     # Normal path to snake like path transition if required
     if path_type == 'snakelike':
-        side_num = int(np.sqrt(len(coord)))
-        label = label.reshape(side_num, side_num)
-        label[1::2] = label[1::2, ::-1]
-        label = label.flatten()
+        label = label[index_map]
 
     # Rotate the label
     if rotate90 != 0:
         coord = np.rot90(
             coord.reshape(side_num, side_num, 4), rotate90, (0, 1)).reshape(-1, 4)
 
-    # Color: {'phase_name': '#RRGGBBAA'}
-    if color is None:
-        if len(np.unique(label)) > 10:
-            cmap = plt.cm.get_cmap('tab20')
-        else:
-            cmap = plt.cm.get_cmap('tab10')
-        color = {}
-        for i, v in enumerate(np.unique(label)):
-            color[v] = to_hex(cmap(i), keep_alpha=True)
-
     # The original coords are in tetrahedron coordinates
     # Convert to cartesian coordinates
     car_coords = tet_to_car(vertices, coord)
     car_coords -= np.mean(vertices, axis=0)
 
+    # Modify the label based on the json file
+    label = label_modify(label, json_path)
+
+    # Color: {'phase_name': '#RRGGBBAA'}
+    if color is None:
+        cmap = _pick_cmap(len(np.unique(label)))
+        color = {}
+        for i, v in enumerate(np.unique(label)):
+            color[v] = cmap[i]
+
+    # Plot scatters
     _single_scatter(ax, color, label, car_coords, interactive)
 
     # Interactive mode
@@ -323,7 +342,7 @@ def plot_quat_scatter(
             kw = kwargs.copy()
             kw.pop('fig', None)
             # Get the index of the selected point
-            index = event.ind
+            index = index_map[event.ind]
             if len(index) > 1:
                 print("Multiple points selected. Zoom in to select a single point.")
                 return
@@ -346,30 +365,57 @@ def plot_quat_scatter(
         def _refresh(event):
             """Read json file and refresh the scatter with new labels."""
             # Detect double right click
-            if event.dblclick and event.button == 3:
-                # Read the json file
-                new_label = label_modify(label, file_name=json_path)
-                # Detect if new labels are added, generate color for them
-                new_phase = np.unique(new_label)
-                for index, phase in enumerate(new_phase):
-                    if phase not in color:
-                        color[phase] = to_hex(plt.cm.get_cmap('tab10')(index), keep_alpha=True)
-                # If a color is not used, remove it
-                for i in color.copy():
-                    if i not in new_phase:
-                        color.pop(i)
-                # Clear the current scatter
-                ax.clear()
-                # Redraw the scatter with new labels
-                build_tetrahedron(
-                    ax, vertices, axis_label, tick_number,
-                    fontfamily=kwargs.get('fontfamily', 'DejaVu Sans'))
-                _single_scatter(ax, color, new_label, car_coords, interactive)
-                # Refresh the plot
-                plt.tight_layout()
-                plt.draw()
+            if not (event.dblclick and event.button) == 3:
+                return
+            # Read the json file
+            new_label = label_modify(label, json_path)
+            # Detect if new labels are added, generate color for them
+            new_phase = np.unique(new_label)
+            cmap = _pick_cmap(len(new_phase))
+            for index, phase in enumerate(new_phase):
+                if phase not in color:
+                    color[phase] = cmap[index]
+            # If a color is not used, remove it
+            for i in color.copy():
+                if i not in new_phase:
+                    color.pop(i)
+            # Clear the current scatter
+            ax.clear()
+            # Redraw the scatter with new labels
+            build_tetrahedron(
+                ax, vertices, axis_label, tick_number,
+                fontfamily=kwargs.get('fontfamily', 'DejaVu Sans'))
+            _single_scatter(ax, color, new_label, car_coords, interactive)
+            # Refresh the plot
+            plt.tight_layout()
+            plt.draw()
 
         fig.canvas.mpl_connect('pick_event', _onpick)
         fig.canvas.mpl_connect('button_press_event', _refresh)
     plt.tight_layout()
     plt.show()
+
+
+def _pick_cmap(number: int) -> list[str]:
+    """Pick a colormap based on the number of phases.
+
+    - <= 10: tab10
+    - 10 < x <= 20: tab20
+    - > 20: viridis (change to discrete colors)
+
+    Args:
+        number (int): The number of phases.
+
+    Returns:
+        list[str]: The list of hex colors.
+    """
+    if number <= 10:
+        cmap = plt.cm.get_cmap('tab10')
+        result = [to_hex(cmap(i), keep_alpha=True) for i in range(number)]
+    elif 10 < number <= 20:
+        cmap = plt.cm.get_cmap('tab20')
+        result = [to_hex(cmap(i), keep_alpha=True) for i in range(number)]
+    else:
+        cmap = plt.cm.get_cmap('viridis')
+        result = [to_hex(cmap(i / number), keep_alpha=True) for i in range(number)]
+    return result
