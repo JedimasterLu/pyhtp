@@ -316,7 +316,7 @@ def plot_quat_scatter(
     car_coords -= np.mean(vertices, axis=0)
 
     # Modify the label based on the json file
-    label = label_modify(label, json_path)
+    label = label_modify(label, json_path, index_map)
 
     # Color: {'phase_name': '#RRGGBBAA'}
     if color is None:
@@ -368,7 +368,7 @@ def plot_quat_scatter(
             if not (event.dblclick and event.button) == 3:
                 return
             # Read the json file
-            new_label = label_modify(label, json_path)
+            new_label = label_modify(label, json_path, index_map)
             # Detect if new labels are added, generate color for them
             new_phase = np.unique(new_label)
             cmap = _pick_cmap(len(new_phase))
