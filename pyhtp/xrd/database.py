@@ -14,7 +14,7 @@ from numpy.typing import NDArray
 from matplotlib.axes import Axes
 from matplotlib.colors import Colormap
 from mpl_toolkits.mplot3d import Axes3D
-from sklearn.cluster import KMeans
+# from sklearn.cluster import KMeans, MiniBatchKMeans, HDBSCAN
 from sklearn.metrics import silhouette_score
 from ..typing import SampleInfo, AngleRange, PatternInfo, PeakParam
 from .pattern import XRDPattern
@@ -477,6 +477,7 @@ class XRDDatabase:
             mask: AngleRange | list[AngleRange] | None = None,
             param: PeakParam | None = None,
             mask_param: PeakParam | None = None,
+            index: list[int] | NDArray[np.int_] | None = None
     ) -> list[PeakInfoType]:
         """Return the peak informations of all the patterns.
 
@@ -488,6 +489,8 @@ class XRDDatabase:
                 Defaults to None.
             param (PeakParam, optional): The parameter for the peak detection. Defaults to None.
             mask_param (PeakParam, optional): The parameter for the mask. Defaults to None.
+            index (list[int] | NDArray[np.int_] | None, optional): The index of the patterns to
+                get the peak. If None, all the patterns will be processed. Defaults to None.
 
         Returns:
             list[PeakInfoType]: The peak informations of all the patterns.
@@ -498,8 +501,11 @@ class XRDDatabase:
                     and ``peak_angles``.
 
         """
+        if index is None:
+            index = list(range(len(self.data)))
+        patterns_to_process = [self.data[i] for i in index]
         peak_info = []
-        for pattern in self.data:
+        for pattern in patterns_to_process:
             peak_info.append(
                 pattern.get_peak(
                     mask, param, mask_param,
@@ -510,7 +516,9 @@ class XRDDatabase:
             self,
             param: PeakParam | None = None,
             mask: AngleRange | list[AngleRange] | None = None,
-            mask_param: PeakParam | None = None) -> list[NDArray[np.float64]]:
+            mask_param: PeakParam | None = None,
+            index: list[int] | NDArray[np.int_] | None = None
+    ) -> list[NDArray[np.float64]]:
         """Return the peak two_theta of all the patterns.
 
         Args:
@@ -518,14 +526,16 @@ class XRDDatabase:
             mask (AngleRange | list[AngleRange], optional): The mask for the peak detection.
                 Defaults to None.
             mask_param (PeakParam, optional): The parameter for the mask. Defaults to None.
+            index (list[int] | NDArray[np.int_] | None, optional): The index of the patterns to
+                get the peak. If None, all the patterns will be processed. Defaults to None.
 
         Returns:
             list[NDArray]: The peak two_theta of all the patterns.
         """
-        peak_info = self.get_peak(mask, param, mask_param)
+        peak_info = self.get_peak(mask, param, mask_param, index)
         return [info[1]['peak_angles'] for info in peak_info]
 
-    def classify(
+    def classify_legacy(
             self,
             n_clusters: tuple[int, int] | int = (2, 10),
             msg_display: int = 0,
@@ -552,6 +562,8 @@ class XRDDatabase:
         Returns:
             NDArray: The clustering label of all the patterns.
         """
+        from sklearn.cluster import KMeans  # type: ignore  # pylint: disable=import-outside-toplevel
+
         if isinstance(n_clusters, int):
             n_clusters = (n_clusters, n_clusters + 1)
 
@@ -566,9 +578,9 @@ class XRDDatabase:
             mask_param=kwargs.pop('mask_param', None))
         # The length of elements in peak_data are not the same
         # Encode the peaks to a matrix with shape (n_patterns, features)
-        encoded_two_theta = db.peak_encoder(
+        encoded_two_theta = db.peak_encoder_legacy(
             two_theta=peak_two_theta,
-            two_theta_tol=kwargs.pop('two_theta_tol', 0.5),
+            two_theta_tol=kwargs.pop('two_theta_tol', 0.2),
             peak_number=kwargs.pop('peak_number', None))
 
         # KMeans clustering
@@ -592,10 +604,202 @@ class XRDDatabase:
                   silhouette score: {max(scores):.2f}')
         return label
 
+    def classify(
+            self,
+            method: Literal['hdbscan', 'kmeans'] = 'hdbscan',
+            n_clusters: tuple[int, int] | int = (2, 10),
+            phase_of_peaks: list[str] | NDArray[np.str_] | None = None,
+            **kwargs) -> NDArray[np.str_]:
+        """Cluster the diffraction patterns based on peak_two_theta.
+
+        Since the length of peak_two_theta for different patterns are not the same,
+        a encoder is used to convert them into the same shape before classification.
+        Please check the ``XRDDatabase.peak_encoder()`` for more information.
+
+        Args:
+            method (Literal[&#39;hdbscan&#39;, &#39;kmeans&#39;], optional):
+                The algorithm used to cluster. Defaults to 'hdbscan'.
+            n_clusters (int | None, optional): The cluster number for kmeans.
+                Defaults to (2, 10). If tuple, all the cluster numbers in the range
+                will be tested and the best one with highest silhouette_score will be selected.
+            phase_of_peaks (list[str] | NDArray[np.str_] | None, optional): The phase of each
+                characteristic peak. Automatic phase detection from cif_database is not
+                implemented yet. Please note that the order of the phase should be
+                from low angle peak to high angle peak. Defaults to None.
+                - If cif_database is given, the result label will contain phase information.
+                - If not, the label will be integers.
+            **kwargs: Other arguments for ``XRDDatabase.get_peak()`` and
+                ``XRDDatabase.peak_encoder()``. Please refer to the functions for more information.
+                - mask (AngleRange | list[AngleRange], optional): The mask for the peak detection.
+                - param (PeakParam, optional): The parameter for the peak detection.
+                - mask_param (PeakParam, optional): The parameter for the mask.
+                - two_theta_tol (int | float, optional): The tolerance for the two_theta.
+                - peak_number (int | None, optional): The number of peaks for the encoding. If None,
+                    hdbscan will be used to cluster the peaks without given cluster number.
+                - min_cluster_size (int, optional): The minimum cluster size for hdbscan.
+                    Defaults to 10.
+
+        Returns:
+            NDArray: The clustering label of all the patterns.
+        """
+        if isinstance(n_clusters, int):
+            n_clusters = (n_clusters, n_clusters + 1)
+
+        # Get the peak angles of the patterns
+        # Since the module is temporarily for thin film, the peak intensity is not considered
+        peak_two_theta = self.get_peak_two_theta(
+            param=kwargs.get('param', None),
+            mask=kwargs.get('mask', None),
+            mask_param=kwargs.get('mask_param', None))
+        # The length of elements in peak_data are not the same
+        # Encode the peaks to a matrix with shape (n_patterns, features)
+        encoded_two_theta = self.peak_encoder(
+            two_theta=peak_two_theta,
+            two_theta_tol=kwargs.get('two_theta_tol', 0.2),
+            peak_number=kwargs.pop('peak_number', None))
+        # HDBSCAN clustering
+        if method == 'hdbscan':
+            from sklearn.cluster import HDBSCAN  # type: ignore  # pylint: disable=import-outside-toplevel
+            model = HDBSCAN(
+                min_cluster_size=kwargs.pop('min_cluster_size', 10),
+                store_centers='both', allow_single_cluster=True,
+                n_jobs=-1).fit(encoded_two_theta)
+        if method == 'kmeans':
+            from sklearn.cluster import MiniBatchKMeans  # pylint: disable=import-outside-toplevel
+            scores = []
+            results = []
+            for k in range(*n_clusters):
+                model = MiniBatchKMeans(
+                    n_clusters=k,
+                    random_state=0).fit(encoded_two_theta)
+                score = silhouette_score(encoded_two_theta, model.labels_)
+                scores.append(score)
+                results.append(model)
+            best_index = np.argmax(scores)
+            model = results[best_index]
+        print(f'Finish with {len(set(model.labels_))} clusters, silhouette score: {silhouette_score(encoded_two_theta, model.labels_):.2f}')
+        # Return directly if phase_of_peaks is not given
+        if phase_of_peaks is None:
+            return model.labels_.astype(str).flatten()
+        # Get the label modifier
+        phase_cluster = self.get_label_modifier(
+            raw_label=model.labels_.astype(str).flatten(),
+            two_theta=peak_two_theta,
+            two_theta_tol=kwargs.get('two_theta_tol', 0.2),
+            phase_of_peaks=phase_of_peaks)
+        # Get the new label
+        phase_label = model.labels_.copy().astype(str)
+        for key, value in phase_cluster.items():
+            for i in value:
+                phase_label[phase_label == i] = key
+        return phase_label
+
+    def get_label_modifier(
+            self,
+            raw_label: NDArray[np.str_] | list[str],
+            two_theta: list[NDArray[np.float64]],
+            two_theta_tol: int | float,
+            phase_of_peaks: list[str] | NDArray[np.str_],
+            save_dir: str = '') -> dict[str, list[str]]:
+        """Get the label to phase name modifier for the clustering result.
+
+        Args:
+            raw_label (NDArray[np.str_] | list[str]): The originalclustering label of
+                all the patterns.
+            two_theta (list[NDArray[np.float64]]): The peak angles of all the patterns.
+            two_theta_tol (int | float): The tolerance for the two_theta. This parameter
+                is used to determine if two peaks are the same in generating existing matrix.
+            phase_of_peaks (list[str] | NDArray[np.str_]): The phase of each characteristic peak.
+                The order of the phase should be from low angle peak to high angle peak.
+            save_dir (str, optional): The directory to save the label modifier. Defaults to ''.
+                If not given, the modifier will not be saved.
+
+        Returns:
+            dict[str, list[str]]: The label to phase name modifier.
+                - Key: The phase name.
+                - Value: The index of the cluster.
+        """
+        # Use HDBSCAN to cluster, since the peak number of each cluster is unknown
+        from sklearn.cluster import HDBSCAN  # type: ignore  # pylint: disable=import-outside-toplevel
+
+        # Else, calculate the phase of each cluster
+        existing_peaks = self.existing_two_theta(
+            two_theta=two_theta, two_theta_tol=two_theta_tol)
+        peak_exist_matrix = np.zeros((len(set(raw_label)), len(existing_peaks)))
+
+        for cluster_index, label in enumerate(sorted(set(raw_label))):
+            point_index = np.where(raw_label == label)[0]
+            if len(point_index) < 2:
+                continue
+            current_two_theta = [two_theta[i] for i in point_index]
+            current_two_theta = np.concatenate(current_two_theta).reshape(-1, 1)
+            # If the length of two_thetas is dramatically less than index,
+            # the cluster is probably amorphous
+            if len(current_two_theta) < 0.8 * len(point_index):
+                continue
+            # Set the min_cluster_size to 80% of the data
+            # Which means that only if a peak appears at most of the patterns
+            # it will be considered as a characteristic peak of this cluster
+            min_cluster_size = max(2, int(0.8 * len(point_index)))
+            current_model = HDBSCAN(
+                min_cluster_size=min_cluster_size,
+                cluster_selection_epsilon=two_theta_tol,
+                store_centers='both', allow_single_cluster=True,
+                n_jobs=-1).fit(current_two_theta)
+            cluster_centers = np.sort(current_model.centroids_.flatten())
+            # The tolerance for the matrix is the half of the min diffraction peak distance
+            # If the difference between two peaks is smaller than the tol,
+            # they are considered as the same peak
+            if len(cluster_centers) < 2:
+                matrix_tol = two_theta_tol * 2
+            else:
+                matrix_tol = np.min(np.diff(cluster_centers)) / 2
+            for angle in cluster_centers:
+                # If the angle is within the tol of a existing peak angle
+                # The matrix[angle, j] will be set to 1
+                nearest_index = np.argmin(np.abs(existing_peaks - angle))
+                if np.abs(existing_peaks[nearest_index] - angle) < matrix_tol:
+                    peak_exist_matrix[cluster_index, nearest_index] = 1
+
+        # Get the phase of each cluster
+        # The key is the phase name, the value is the index of the cluster
+        # The original label generated from clustering are integers
+        # The new label will be the phase name
+        phase_cluster = {}
+        # 1 in peak_exist_matrix means the phase is existing
+        for point_index, label in enumerate(sorted(set(raw_label))):
+            # If label is -1, set phase name to be Error
+            if label == '-1':
+                phase_name = 'Error'
+            # If all 0, set phase name to be amorphous
+            if np.all(peak_exist_matrix[point_index] == 0):
+                phase_name = 'Amorphous'
+            else:
+                current_phase = []
+                for i, value in enumerate(peak_exist_matrix[point_index]):
+                    if value == 1 and phase_of_peaks[i] not in current_phase:
+                        current_phase.append(phase_of_peaks[i])
+                # Sort current_phase
+                current_phase.sort()
+                phase_name = ' + '.join(current_phase)
+            if phase_name not in phase_cluster:
+                phase_cluster[phase_name] = [str(label)]
+            else:
+                phase_cluster[phase_name].append(str(label))
+
+        if save_dir:
+            import json  # pylint: disable=import-outside-toplevel
+            with open(
+                    os.path.join(save_dir, 'label_modifier.json'), 'w',
+                    encoding='utf-8') as f:
+                json.dump(phase_cluster, f)
+
+        return phase_cluster
+
     def peak_encoder(
             self,
             two_theta: list[NDArray[np.float64]],
-            two_theta_tol: int | float = 0.5,
+            two_theta_tol: int | float = 0.2,
             peak_number: int | None = None) -> NDArray[np.float64]:
         """Encode the peaks based on the combine peaks of the sample.
 
@@ -603,7 +807,45 @@ class XRDDatabase:
 
         Args:
             two_theta (list[NDArray]): The peak angles of all the patterns. [pattern_1, pattern_2, ...]
-            two_theta_tol (float, optional): 2 theta tolerance. Defaults to 0.5. If the distance
+            two_theta_tol (float, optional): 2 theta tolerance. Defaults to 0.w. If the distance
+                between two peaks are bigger than two_theta_tol, the similarity is directly set to 0.
+            peak_number (int, optional): The number of clusters for kmeans. Defaults to None.
+                If None, the function will use the peak quantity of the pattern with most peaks.
+
+        Returns:
+            NDArray[float]: The encoded peaks. Shape: (n_patterns, features).
+        """
+        existing_peaks = self.existing_two_theta(
+            two_theta=two_theta,
+            peak_number=peak_number,
+            two_theta_tol=two_theta_tol)
+        # Encode the peaks
+        encoded_data = np.zeros((len(two_theta), len(existing_peaks)))
+        for i, angles in enumerate(two_theta):
+            if len(angles) == 0:
+                continue
+            for j, peak in enumerate(existing_peaks):
+                # Calculate the nearest peak in angles to the specific ch_peak
+                nearest_index = np.argmin(np.abs(angles - peak))
+                # If the difference is too large, set 0
+                if np.abs(angles[nearest_index] - peak) > two_theta_tol:
+                    encoded_data[i, j] = 0
+                    continue
+                encoded_data[i, j] = 1 - np.abs(angles[nearest_index] - peak) / peak
+        return encoded_data
+
+    def peak_encoder_legacy(
+            self,
+            two_theta: list[NDArray[np.float64]],
+            two_theta_tol: int | float = 0.2,
+            peak_number: int | None = None) -> NDArray[np.float64]:
+        """Encode the peaks based on the combine peaks of the sample.
+
+        The resulting peak vector of all the patterns have the same length as the combine peaks.
+
+        Args:
+            two_theta (list[NDArray]): The peak angles of all the patterns. [pattern_1, pattern_2, ...]
+            two_theta_tol (float, optional): 2 theta tolerance. Defaults to 0.w. If the distance
                 between two peaks are bigger than two_theta_tol, the similarity is directly set to 0.
             peak_number (int, optional): The number of clusters for kmeans. Defaults to None.
                 If None, the function will use the peak quantity of the pattern with most peaks.
@@ -632,7 +874,8 @@ class XRDDatabase:
     @staticmethod
     def existing_two_theta(
             two_theta: list[NDArray[np.float64]],
-            peak_number: int | None = None) -> NDArray[np.float64]:
+            peak_number: int | None = None,
+            two_theta_tol: int | float = 0.2) -> NDArray[np.float64]:
         """Return the combined diffraction peaks of all the patterns.
 
         The peaks are clustered by kmeans.
@@ -642,8 +885,11 @@ class XRDDatabase:
 
         Args:
             two_theta (list[NDArray]): The peak angles of all the patterns. [pattern_1, pattern_2, ...]
-            peak_number (int, optional): The number of clusters for kmeans. Defaults to None.
-                If None, the function will use the peak quantity of the pattern with most peaks.
+            peak_number (int, optional): The number of clusters for kmeans. If peak_number is given,
+                kmeans will be used to cluster the peaks. If None, hdbscan will be used to
+                automatically cluster the peaks without given cluster number. Defaults to None.
+            two_theta_tol (float, optional): The 2 theta tolerance for hdbscan. This parameter
+                is passed to the cluster_selection_epsilon of hdbscan. Defaults to 0.2.
 
         Returns:
             NDArray[float]: The combined diffraction peaks.
@@ -655,10 +901,23 @@ class XRDDatabase:
         # Get the characteristic peaks
         # First, concatenate all the peaks
         all_peaks = np.concatenate(two_theta).reshape(-1, 1)
-        # Second, use kmeans to cluster the peaks
-        kmeans = KMeans(
-            n_clusters=peak_number,
-            random_state=0, tol=1e-5).fit(all_peaks)
+        # Second, cluster the peaks
+        if peak_number:
+            from sklearn.cluster import MiniBatchKMeans  # pylint: disable=import-outside-toplevel
+            # kmeans = KMeans(
+            #     n_clusters=peak_number,
+            #     random_state=0, tol=1e-5).fit(all_peaks)
+            model = MiniBatchKMeans(
+                n_clusters=peak_number,
+                random_state=0).fit(all_peaks)
+            cluster_centers = model.cluster_centers_.flatten()
+        else:
+            from sklearn.cluster import HDBSCAN  # pylint: disable=import-outside-toplevel  # type: ignore
+            model = HDBSCAN(
+                min_cluster_size=3,  # So that small phase areas can be detected
+                store_centers='both', allow_single_cluster=True,
+                cluster_selection_epsilon=two_theta_tol,
+                n_jobs=-1).fit(all_peaks)
+            cluster_centers = model.centroids_.flatten()
         # Third, get the characteristic peaks as the center of each cluster
-        existing_two_thetas = np.sort(kmeans.cluster_centers_[:, 0])
-        return existing_two_thetas
+        return np.sort(cluster_centers)

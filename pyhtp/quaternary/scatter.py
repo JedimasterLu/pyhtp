@@ -199,7 +199,7 @@ def plot_quat_scatter(
         composition_type: Literal['atomic', 'volumetric'] = 'atomic',
         interactive: bool = False,
         ax: Axes3D | None = None,
-        json_path: str = 'modifier.json',
+        json_path: str = '',
         ylim: tuple[float | int, float | int] | None = None,
         rotate90: int = 0,
         **kwargs) -> None:
@@ -316,7 +316,8 @@ def plot_quat_scatter(
     car_coords -= np.mean(vertices, axis=0)
 
     # Modify the label based on the json file
-    label = label_modify(label, json_path, index_map)
+    if json_path:
+        label = label_modify(label, json_path, index_map)
 
     # Color: {'phase_name': '#RRGGBBAA'}
     if color is None:
@@ -331,7 +332,7 @@ def plot_quat_scatter(
     # Interactive mode
     if interactive:
         if xrd_database is None:
-            raise ValueError("The database should be provided for interactive mode.")
+            raise ValueError("The xrd_database should be provided for interactive mode.")
 
         def _onpick(event):
             """Scatter plot pick event."""
@@ -368,6 +369,8 @@ def plot_quat_scatter(
             if not (event.dblclick and event.button) == 3:
                 return
             # Read the json file
+            if not json_path:
+                return
             new_label = label_modify(label, json_path, index_map)
             # Detect if new labels are added, generate color for them
             new_phase = np.unique(new_label)
