@@ -112,7 +112,7 @@ class EllipDatabase:
             point_index = index.tolist()
         else:
             point_index = index
-        assert len(point_index) > 0
+        assert isinstance(point_index, list) and len(point_index) > 0
         # Get the wavelength index
         if wavelength is None:
             wavelength_index = list(range(len(self.wavelength)))
@@ -124,11 +124,11 @@ class EllipDatabase:
         assert len(wavelength_index) > 0
         # Get the property
         if property_name == 'n':
-            return np.array([self.data[i].n[wavelength_index] for i in point_index])
-        elif property_name == 'k':
-            return np.array([self.data[i].k[wavelength_index] for i in point_index])
-        elif property_name == 'absorp':
-            return np.array([self.data[i].absorp[wavelength_index] for i in point_index])
+            return np.array([self.data[i].n[wavelength_index] for i in point_index])  # type: ignore
+        if property_name == 'k':
+            return np.array([self.data[i].k[wavelength_index] for i in point_index])  # type: ignore
+        if property_name == 'absorp':
+            return np.array([self.data[i].absorp[wavelength_index] for i in point_index])  # type: ignore
 
     @staticmethod
     def fom(
@@ -144,9 +144,9 @@ class EllipDatabase:
         Args:
             crystalline_data (EllipDatabase): The ellipsometry data of the crystalline sample.
             amorphous_data (EllipDatabase): The ellipsometry data of the amorphous sample.
-            wavelength (float | list[float] | NDArray[np.float64] | None, optional): 
+            wavelength (float | list[float] | NDArray[np.float64] | None, optional):
                 The parameter pass to get_property. Defaults to None.
-            index (int | list[int] | NDArray[np.int_], optional): 
+            index (int | list[int] | NDArray[np.int_], optional):
                 The parameter pass to get_property. Defaults to -1.
 
         Returns:
