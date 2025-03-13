@@ -201,12 +201,70 @@ class EllipSpectrum:
             y = self.absorp * x ** exponent * 1e2  # J/cm^2
             x /= scipy.constants.e  # eV
             y /= scipy.constants.e  # eV/cm^2
-            value, error = self._fit_linear(exponent, r2_tol, angle_tol, length_tol)
+            value, error = self._get_tauc_bg(exponent, r2_tol, angle_tol, length_tol)
             # The intersection with x axis is the bandgap.
             bandgap[key] = (value, error)
         return BandGap(**bandgap)
 
-    def _fit_linear(
+    @staticmethod
+    def fit_linear_segment(
+            x: NDArray,
+            y: NDArray,
+            r2_tol: float,
+            angle_tol: float) -> tuple[list[int], NDArray]:
+        """Fit the linear segment of a curve.
+
+        Args:
+            x (NDArray): _description_
+            y (NDArray): _description_
+            exponent (float): _description_
+            r2_tol (float): _description_
+            angle_tol (float): _description_
+
+        Returns:
+            tuple[float, float]: _description_
+        """
+        x = x.copy()
+        y = y.copy()
+        # Normalize y to the same scale as x.
+        y = (y - np.min(y)) / (np.max(y) - np.min(y)) * (np.max(x) - np.min(x))
+
+        # Recursively bisect the curve to find the linear segment.
+        section_index: list[int] = []
+        section_index.append(0)
+        section_index.append(len(x) - 1)
+        while any(_sections_r2(section_index, x, y) < r2_tol):
+            current_r2 = _sections_r2(section_index, x, y)
+            # Find the section with r2 < tol_r2.
+            index = np.where(current_r2 < r2_tol)[0]
+            # Bisect the section, add index to the section_index.
+            for i in index:
+                # If the section is too small, skip.
+                if section_index[i + 1] - section_index[i] == 1:
+                    continue
+                section_index.append((section_index[i] + section_index[i + 1]) // 2)
+            section_index.sort()
+
+        # Merge the segments with similar inclination.
+        # Calculate the inclination of each segment.
+        inclination = np.rad2deg(
+            np.arctan((y[section_index][1:] - y[section_index][:-1])
+                      / (x[section_index][1:] - x[section_index][:-1])))
+        delta_inclination = inclination[1:] - inclination[:-1]
+        # Merge the segments with similar inclination.
+        while (len(delta_inclination) > 0
+               and np.min(np.abs(delta_inclination)) < angle_tol):
+            min_index = np.argmin(delta_inclination)
+            # Merge the two segments by remove
+            # the middle point in the section_index.
+            section_index.pop(min_index + 1)
+            inclination = np.rad2deg(
+                np.arctan((y[section_index][1:] - y[section_index][:-1])
+                          / (x[section_index][1:] - x[section_index][:-1])))
+            delta_inclination = inclination[1:] - inclination[:-1]
+        return section_index, inclination
+
+    def _get_tauc_bg(
             self,
             exponent: float,
             r2_tol: float,
