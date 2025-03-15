@@ -136,7 +136,9 @@ class QuatPlot:
         self.params.update(kwargs)
 
     @staticmethod
-    def _get_colors(color_number: int) -> list[str]:
+    def _get_colors(
+            color_number: int,
+            cmap_for_long: str = 'viridis') -> list[str]:
         """Pick a colormap based on the number of phases.
 
         - <= 10: tab10
@@ -145,6 +147,8 @@ class QuatPlot:
 
         Args:
             number (int): The number of phases.
+            cmap_for_long (str, optional):
+                The colormap for long list. Defaults to 'viridis'.
 
         Returns:
             list[str]: The list of hex colors.
@@ -158,7 +162,7 @@ class QuatPlot:
             result = [to_hex(cmap(i), keep_alpha=True)
                       for i in range(color_number)]
         else:
-            cmap = plt.cm.get_cmap('viridis')
+            cmap = plt.cm.get_cmap(cmap_for_long)
             result = [to_hex(cmap(i / color_number), keep_alpha=True)
                       for i in range(color_number)]
         return result
@@ -188,44 +192,56 @@ class QuatPlot:
     def scatter(
             self,
             coords: NDArray[np.float64],
-            label: list[str] | NDArray[np.str_] | None = None,
+            value: list | NDArray | None = None,
+            cmap: str = 'viridis',
             color: list[str] | NDArray[np.str_] | None = None,
             group_color: dict[str, str] | None = None,
             artist_name: str | None = None,
             marker: str = 'o',
-            markersize: int = 10) -> PathCollection:
+            markersize: int = 10,
+            max_legend_number: int = 20) -> PathCollection:
         """Add scatter plot to the quaternary phase diagram.
 
-        If label is provided, the scatter plot will be colored by the label.
-        And legend will be added.
+        If value is provided, the color will be determined by the value.
+        If the group number of value is less than max_legend_number, a legend will be added.
 
         Args:
             coords (NDArray[np.float64]): The coordinates. Shape (n, 4).
-            color (list[str] | NDArray[np.str_] | None, optional):
-                The color of the points. Defaults to None.
-            label (list[str] | NDArray[np.str_] | None, optional):
-                The label of the points. Defaults to None.
+            value (list | NDArray | None, optional): The value of the points. Defaults to None.
+            cmap (str, optional): The colormap. Defaults to 'viridis'.
+            color (list[str] | NDArray[np.str_] | None, optional): The color of the points.
+                Defaults to None.
+            group_color (dict[str, str] | None, optional): The color of the groups.
+                Defaults to None.
+            artist_name (str | None, optional): The name of the artist. Defaults to None.
+            marker (str, optional): The marker of the points. Defaults to 'o'.
+            markersize (int, optional): The size of the markers. Defaults to 10.
+            max_legend_number (int, optional): The maximum number of legends. Defaults to 20.
+
+        Returns:
+            PathCollection: The scatter plot artist.
         """
-        if color is None and label is None:
+        if color is None and value is None:
             artist = self.ax.scatter(
                 *self.tet_to_car(coords).T, c='tab:blue', s=markersize)
-        elif color is not None and label is None:
+        elif color is not None and value is None:
             artist = self.ax.scatter(
                 *self.tet_to_car(coords).T, c=color, s=markersize)
-        elif label is not None and color is None:
+        elif value is not None and color is None:
             if group_color is None:
-                color_of_groups = self._get_colors(len(np.unique(label)))
-                group_color = dict(zip(np.unique(label), color_of_groups))
-            color = [group_color[i] for i in label]
+                color_of_groups = self._get_colors(len(np.unique(value)), cmap)
+                group_color = dict(zip(np.unique(value), color_of_groups))
+            color = [group_color[i] for i in value]
             artist = self.ax.scatter(
                 *self.tet_to_car(coords).T, c=color, s=markersize,
                 marker=marker)
-            self.legend_handles.extend(
-                [Line2D([0], [0], marker=marker, color='w', label=group_name,
-                        markerfacecolor=group_color[group_name],
-                        markersize=markersize)
-                 for group_name in group_color])
-            self.legend_labels.extend(list(group_color.keys()))
+            if len(group_color) <= max_legend_number:
+                self.legend_handles.extend(
+                    [Line2D([0], [0], marker=marker, color='w', label=group_name,
+                            markerfacecolor=group_color[group_name],
+                            markersize=markersize)
+                     for group_name in group_color])
+                self.legend_labels.extend(list(group_color.keys()))
         else:
             raise ValueError("Either color or label should be None.")
         # Put the handle of the artist into the artists dictionary
@@ -252,6 +268,14 @@ class QuatPlot:
                 The quatenary coordinates of all the points. Shape (n, 4).
             color (str, optional): Defaults to 'tab:blue'.
             linewidth (float, optional): Defaults to 2.
+            linestyle (str, optional): Defaults to '-'.
+            label (str | None, optional): Defaults to None. The label of the line.
+                If provided, the line will be added to the legend.
+            alpha (float, optional): Defaults to 1. The transparency of the line.
+            artist_name (str | None, optional): Defaults to None. The name of the artist.
+
+        Returns:
+            Line2D: The line artist
         """
         # Check if the length of the coordinates is correct
         if coords.ndim != 2 or coords.shape[1] != 4:
@@ -292,6 +316,10 @@ class QuatPlot:
                 The value limits. Defaults to None. If tuple, it will be the
                 actual value. If float, it will be the percentile.
                 For example, vlim=0.05 means (5%, 95%). Defaults to None.
+            artist_name (str | None, optional): The name of the artist. Defaults to None.
+
+        Returns:
+            Poly3DCollection: The surface artist.
         """
         if color is not None:
             color = np.array(color).flatten()
@@ -342,6 +370,9 @@ class QuatPlot:
                 - labelfontfamily: The font family of the label.
                 Other arguments are passed to the colorbar function
                 and the tick_params function.
+
+        Returns:
+            Colorbar: The colorbar artist.
         """
         if artist is None:
             surface_artists = [i for i in self.artists if 'surface' in i]
@@ -380,6 +411,11 @@ class QuatPlot:
     def refresh(self) -> None:
         """Refresh the quaternary phase diagram."""
         assert isinstance(self.fig, Figure)
+        # Clear the axes and redraw all the artists in the dictionary
+        self.ax.clear()
+        self._build_tetrahedron()
+        for artist in self.artists.values():
+            self.ax.add_artist(artist)
         self.fig.tight_layout()
         plt.draw()
 
