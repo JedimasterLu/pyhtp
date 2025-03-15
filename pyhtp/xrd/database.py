@@ -50,16 +50,16 @@ class XRDDatabase:
             Since the element in the list is not verified, please use this method carefully.
 
         Args:
-            info (SampleInfo): The information of the sample. Please refer to the SampleInfo NamedTuple.
-                For XRD analysis, the two_theta_range must be set.
-            file_dir (str | list[str] | None, optional): The directory of the database. Input a list if
-                there are multiple scan angle ranges. Defaults to None.
+            info (SampleInfo): The information of the sample. Please refer to the SampleInfo
+                NamedTuple. For XRD analysis, the two_theta_range must be set.
+            file_dir (str | list[str] | None, optional): The directory of the database.
+                Input a list if there are multiple scan angle ranges. Defaults to None.
             data (list[XrdPattern] | None, optional): A list of XrdPattern. Defaults to None.
 
         Raises:
             ValueError: The two_theta_range should be set for XRD analysis.
-            ValueError: The file_dir and info.two_theta_range should be list together or str, AngleRange.
-                If list, the length should be the same.
+            ValueError: The file_dir and info.two_theta_range should be list together or str,
+                AngleRange. If list, the length should be the same.
             FileNotFoundError: Some directories in the file_dir is not existing.
             ValueError: Either file_dir or data should be set.
             ValueError: The number of files in file_dir are not identical.
@@ -163,7 +163,8 @@ class XRDDatabase:
             # Split each line of data into a list: [two-theta, intensity]
             data = np.array([line.split() for line in lines], dtype=float)
             # Convert the list into a numpy array
-            assert isinstance(info.temperature, (int, float))  # temperature can only be float for xrd
+            # temperature can only be float for xrd
+            assert isinstance(info.temperature, (int, float))
             pattern = XRDPattern(
                 two_theta=data[:, 0], intensity=data[:, 1],
                 info=PatternInfo(
@@ -195,11 +196,14 @@ class XRDDatabase:
             # Merge the two arrays
             two_theta = np.concatenate((left.two_theta, right.two_theta))
             intensity = np.concatenate((left.intensity, right.intensity))
-            assert isinstance(info.temperature, (int, float))  # temperature can only be float for xrd
+            # temperature can only be float for xrd
+            assert isinstance(info.temperature, (int, float))
             new_info = PatternInfo(
                 name=info.name,
                 index=left.info.index,
-                two_theta_range=AngleRange(left.info.two_theta_range[0], right.info.two_theta_range[1]),
+                two_theta_range=AngleRange(
+                    left.info.two_theta_range[0],
+                    right.info.two_theta_range[1]),
                 element=info.element,
                 temperature=info.temperature)
             return XRDPattern(two_theta=two_theta, intensity=intensity, info=new_info)
@@ -443,7 +447,8 @@ class XRDDatabase:
         Args:
             index (Optional[list[int]], optional): Index to plot. Defaults to None.
             ax (Optional[Axes3D], optional): matplotlib axis. Defaults to None.
-            amorphous_index (int, optional): If set, subtract baseline based on a reference point. Defaults to -1.
+            amorphous_index (int, optional): If set, subtract baseline based on a
+                reference point. Defaults to -1.
 
         Raises:
             ValueError: The ax is not correctly set!
@@ -562,7 +567,7 @@ class XRDDatabase:
         Returns:
             NDArray: The clustering label of all the patterns.
         """
-        from sklearn.cluster import KMeans  # type: ignore  # pylint: disable=import-outside-toplevel
+        from sklearn.cluster import KMeans  # type: ignore # pylint: disable=import-outside-toplevel
 
         if isinstance(n_clusters, int):
             n_clusters = (n_clusters, n_clusters + 1)
@@ -659,7 +664,8 @@ class XRDDatabase:
             peak_number=kwargs.pop('peak_number', None))
         # HDBSCAN clustering
         if method == 'hdbscan':
-            from sklearn.cluster import HDBSCAN  # type: ignore  # pylint: disable=import-outside-toplevel
+            # pylint: disable=import-outside-toplevel
+            from sklearn.cluster import HDBSCAN  # type: ignore
             model = HDBSCAN(
                 min_cluster_size=kwargs.pop('min_cluster_size', 10),
                 store_centers='both', allow_single_cluster=True,
@@ -677,7 +683,8 @@ class XRDDatabase:
                 results.append(model)
             best_index = np.argmax(scores)
             model = results[best_index]
-        print(f'Finish with {len(set(model.labels_))} clusters, silhouette score: {silhouette_score(encoded_two_theta, model.labels_):.2f}')
+        print(f'Finish with {len(set(model.labels_))} clusters, \
+              silhouette score: {silhouette_score(encoded_two_theta, model.labels_):.2f}')
         # Return directly if phase_of_peaks is not given
         if phase_of_peaks is None:
             return model.labels_.astype(str).flatten()
@@ -720,7 +727,8 @@ class XRDDatabase:
                 - Value: The index of the cluster.
         """
         # Use HDBSCAN to cluster, since the peak number of each cluster is unknown
-        from sklearn.cluster import HDBSCAN  # type: ignore  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        from sklearn.cluster import HDBSCAN  # type: ignore
 
         # Else, calculate the phase of each cluster
         existing_peaks = self.existing_two_theta(
@@ -806,9 +814,11 @@ class XRDDatabase:
         The resulting peak vector of all the patterns have the same length as the combine peaks.
 
         Args:
-            two_theta (list[NDArray]): The peak angles of all the patterns. [pattern_1, pattern_2, ...]
-            two_theta_tol (float, optional): 2 theta tolerance. Defaults to 0.w. If the distance
-                between two peaks are bigger than two_theta_tol, the similarity is directly set to 0.
+            two_theta (list[NDArray]): The peak angles of all the patterns.
+                [pattern_1, pattern_2, ...]
+            two_theta_tol (float, optional): 2 theta tolerance. Defaults to 0.
+                If the distance between two peaks are bigger than two_theta_tol,
+                the similarity is directly set to 0.
             peak_number (int, optional): The number of clusters for kmeans. Defaults to None.
                 If None, the function will use the peak quantity of the pattern with most peaks.
 
@@ -844,9 +854,11 @@ class XRDDatabase:
         The resulting peak vector of all the patterns have the same length as the combine peaks.
 
         Args:
-            two_theta (list[NDArray]): The peak angles of all the patterns. [pattern_1, pattern_2, ...]
-            two_theta_tol (float, optional): 2 theta tolerance. Defaults to 0.w. If the distance
-                between two peaks are bigger than two_theta_tol, the similarity is directly set to 0.
+            two_theta (list[NDArray]): The peak angles of all the patterns.
+                [pattern_1, pattern_2, ...]
+            two_theta_tol (float, optional): 2 theta tolerance. Defaults to 0.
+                If the distance between two peaks are bigger than two_theta_tol,
+                the similarity is directly set to 0.
             peak_number (int, optional): The number of clusters for kmeans. Defaults to None.
                 If None, the function will use the peak quantity of the pattern with most peaks.
 
@@ -879,14 +891,19 @@ class XRDDatabase:
         """Return the combined diffraction peaks of all the patterns.
 
         The peaks are clustered by kmeans.
-        For example, if there are two patterns, the peaks angles are [22, 50] and [21, 40, 50], respectively.
-        Then the combined peaks will be [21.5, 40, 50] or [21, 22, 40, 50], based on the n_cluster of kmeans.
+        For example, if there are two patterns, the peaks angles are
+        [22, 50] and [21, 40, 50], respectively.
+        Then the combined peaks will be [21.5, 40, 50] or [21, 22, 40, 50], based on the
+        n_cluster of kmeans.
+
         The function is for the diffraction peak encoding process in classify function.
 
         Args:
-            two_theta (list[NDArray]): The peak angles of all the patterns. [pattern_1, pattern_2, ...]
-            peak_number (int, optional): The number of clusters for kmeans. If peak_number is given,
-                kmeans will be used to cluster the peaks. If None, hdbscan will be used to
+            two_theta (list[NDArray]): The peak angles of all the patterns.
+                [pattern_1, pattern_2, ...]
+            peak_number (int, optional): The number of clusters for kmeans.
+                If peak_number is given, kmeans will be used to cluster the peaks.
+                If None, hdbscan will be used to
                 automatically cluster the peaks without given cluster number. Defaults to None.
             two_theta_tol (float, optional): The 2 theta tolerance for hdbscan. This parameter
                 is passed to the cluster_selection_epsilon of hdbscan. Defaults to 0.2.
@@ -912,7 +929,8 @@ class XRDDatabase:
                 random_state=0).fit(all_peaks)
             cluster_centers = model.cluster_centers_.flatten()
         else:
-            from sklearn.cluster import HDBSCAN  # pylint: disable=import-outside-toplevel  # type: ignore
+            # pylint: disable=import-outside-toplevel
+            from sklearn.cluster import HDBSCAN  # type: ignore
             model = HDBSCAN(
                 min_cluster_size=3,  # So that small phase areas can be detected
                 store_centers='both', allow_single_cluster=True,
@@ -929,19 +947,24 @@ class XRDDatabase:
         """Return the combined diffraction peaks of all the patterns.
 
         The peaks are clustered by kmeans.
-        For example, if there are two patterns, the peaks angles are [22, 50] and [21, 40, 50], respectively.
-        Then the combined peaks will be [21.5, 40, 50] or [21, 22, 40, 50], based on the n_cluster of kmeans.
+        For example, if there are two patterns, the peaks angles are
+        [22, 50] and [21, 40, 50], respectively.
+        Then the combined peaks will be [21.5, 40, 50] or [21, 22, 40, 50], based on the
+        n_cluster of kmeans.
+
         The function is for the diffraction peak encoding process in classify function.
 
         Args:
-            two_theta (list[NDArray]): The peak angles of all the patterns. [pattern_1, pattern_2, ...]
+            two_theta (list[NDArray]): The peak angles of all the patterns.
+                [pattern_1, pattern_2, ...]
             peak_number (int, optional): The number of clusters for kmeans. Defaults to None.
                 If None, the function will use the peak quantity of the pattern with most peaks.
 
         Returns:
             NDArray[float]: The combined diffraction peaks.
         """
-        from sklearn.cluster import KMeans  # type: ignore  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        from sklearn.cluster import KMeans  # type: ignore
         if peak_number is None:
             # Get the max peak number as k_value for kmeans
             peak_number = max(len(i) for i in two_theta)

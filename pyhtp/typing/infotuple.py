@@ -150,13 +150,18 @@ class CIFData(NamedTuple):
 class BandGap(NamedTuple):
     """4 band gaps of a material.
 
-    Contains the value and error. The first element is the value and the second element is the error.
+    Contains the value and error.
+    The first element is the value and the second element is the error.
 
     Args:
-        direct_allowed (tuple[float, float]): The value and error of the direct allowed band gap.
-        direct_forbidden (tuple[float, float]): The value and error of the direct forbidden band gap.
-        indirect_allowed (tuple[float, float]): The value and error of the indirect allowed band gap.
-        indirect_forbidden (tuple[float, float]): The value and error of the indirect forbidden band gap.
+        direct_allowed (tuple[float, float]):
+            The value and error of the direct allowed band gap.
+        direct_forbidden (tuple[float, float]):
+            The value and error of the direct forbidden band gap.
+        indirect_allowed (tuple[float, float]):
+            The value and error of the indirect allowed band gap.
+        indirect_forbidden (tuple[float, float]):
+            The value and error of the indirect forbidden band gap.
     """
     direct_allowed: tuple[float, float]  # value, error
     direct_forbidden: tuple[float, float]
@@ -181,13 +186,17 @@ class BandGapLegacy(NamedTuple):
 
 class PeakParam(NamedTuple):
     """The parameters for finding peaks in a diffraction pattern.
-    - Please refer to https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.find_peaks.html for the meaning of each parameter.
-    - Unlike the original scipy.signal.find_peaks, the units of parameters are transformed to percentage and angle.
+    - Please refer to
+        https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.find_peaks.html
+        for the meaning of each parameter.
+    - Unlike the original scipy.signal.find_peaks, the units of parameters are transformed
+        to percentage and angle.
 
     Args:
         height (float): The minimum height of the peak (percentage of the maximum intensity).
         distance (float): The minimum distance between peaks (two theta angle).
-        prominence (float): The minimum prominence of the peak (percentage of the maximum intensity).
+        prominence (float): The minimum prominence of the peak
+            (percentage of the maximum intensity).
     """
     height: float = 0.01
     distance: float = 0.5
