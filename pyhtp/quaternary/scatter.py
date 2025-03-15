@@ -18,7 +18,7 @@ from matplotlib.colors import to_rgba_array
 from mpl_toolkits.mplot3d import Axes3D
 from ..xrd import XRDDatabase, CIFDatabase
 from ..xrf import XRFDatabase
-from .utils import get_coord, tet_to_car, build_tetrahedron
+from .utils import get_coord, tet_to_car, build_tetrahedron, get_chemical_formula
 
 
 def _bi_scatter(
@@ -349,18 +349,20 @@ def plot_quat_scatter(
                 return
             # Get the xrd pattern of the specific point
             pattern = xrd_database.data[index[0]]
+            # Get the chemical formula of the specific point
+            formula = get_chemical_formula(list(axis_label), coord[event.ind[0]])
             # Plot the xrd pattern of the specific point
             if cif_database is None:
                 _, ax = plt.subplots()
                 pattern.plot(ax=ax, max_intensity=xrd_database.intensity.max(), **kw)
-                ax.set_title(f"{pattern.info.name}-{pattern.info.index}")
+                ax.set_title(f"{formula} - {pattern.info.index}")
                 if ylim:
                     ax.set_ylim(*ylim)
                 plt.show()
             else:
                 pattern.plot_with_ref(
                     cif_database=cif_database,
-                    title=f"{pattern.info.name}-{pattern.info.index}",
+                    title=f"{formula} - {pattern.info.index}",
                     max_intensity=xrd_database.intensity.max(), ylim=ylim, **kw)
 
         def _refresh(event):
@@ -422,3 +424,117 @@ def _pick_cmap(number: int) -> list[str]:
         cmap = plt.cm.get_cmap('viridis')
         result = [to_hex(cmap(i / number), keep_alpha=True) for i in range(number)]
     return result
+
+
+def get_index_on_line(
+        axis_label: tuple[str, str, str, str],
+        start: tuple[float, float, float, float],
+        end: tuple[float, float, float, float],
+        xrd_database: XRDDatabase,
+        xrf_database: XRFDatabase | None = None,
+        path_type: Literal['normal', 'snakelike'] = 'normal',
+        composition_type: Literal['atomic', 'volumetric'] = 'atomic',
+        rotate90: int = 0,
+        tol: float = 0.01) -> NDArray[np.int_]:
+    """Get the index of points on a quaternary line.
+
+    Args:
+        start (tuple[float, float, float, float]): The start point of the line.
+            The start point should be in the tetrahedron coordinates.
+        end (tuple[float, float, float, float]): The end point of the line.
+            The end point should be in the tetrahedron coordinates.
+        side_num (int): The number of points on each side.
+        path_type (Literal['normal', 'snakelike'], optional):
+            For normal type, the points of odd and even lines are in the same order.
+            For snakelike type, the odd and even lines are in the opposite order.
+            Defaults to 'normal'.
+
+    Returns:
+        NDArray[np.int_]: The index of points on the line.
+    """
+    side_num = int(np.sqrt(xrd_database.info.point_number))
+    # Process coordinates from database
+    if xrd_database is not None and xrf_database is None:
+        coord = get_coord(
+            element_order=axis_label,
+            side_number=side_num,
+            info=xrd_database.info,
+            composition_type=composition_type)
+    elif xrf_database is not None:
+        coord = get_coord(
+            element_order=axis_label,
+            side_number=side_num,
+            xrf_database=xrf_database,
+            composition_type=composition_type)
+    else:
+        raise ValueError("Either XRD or XRF database should be provided.")
+    if coord is not None:  # Use the provided coordinates
+        coord = np.array(coord)
+    assert isinstance(coord, np.ndarray)
+
+    # Rotate the label
+    if rotate90 != 0:
+        coord = np.rot90(
+            coord.reshape(side_num, side_num, 4), rotate90, (0, 1)).reshape(-1, 4)
+
+    vertices = np.array([
+        [0, 0, 0],
+        [1, 0, 0],
+        [0.5, np.sqrt(3) / 2, 0],
+        [0.5, np.sqrt(3) / 6, np.sqrt(6) / 3]])
+    car_coord = tet_to_car(vertices, coord)
+    car_coord -= np.mean(vertices, axis=0)
+
+    # If in snakelike mode, the index of the picked point needs to be converted
+    index_map = np.arange(xrd_database.info.point_number)
+    if path_type == 'snakelike':
+        index_map = index_map.reshape(side_num, side_num)
+        index_map[1::2] = index_map[1::2, ::-1]
+        index_map = index_map.flatten()
+
+    car_start = tet_to_car(vertices, np.array([start]))
+    car_end = tet_to_car(vertices, np.array([end]))
+    car_start -= np.mean(vertices, axis=0)
+    car_end -= np.mean(vertices, axis=0)
+
+    points = []
+    for i, c in enumerate(car_coord):
+        # Get the closest point on the line and the distance
+        closest_point, distance = _closest_point_on_line(car_start[0], car_end[0], c)
+        # If the distance is less than tol
+        # And the closest point is between start and end
+        if distance > tol:
+            continue
+        line = car_end - car_start
+        line_norm = np.linalg.norm(line)
+        line_unit = line / line_norm
+        t_closest = np.dot(closest_point.flatten() - car_start.flatten(), line_unit.flatten())
+        if not (0 <= t_closest <= line_norm):
+            continue
+        points.append(i)
+    return index_map[points]
+
+
+def _closest_point_on_line(
+        start: NDArray,
+        end: NDArray,
+        point: NDArray) -> tuple[NDArray, float]:
+    """Get the closest point on a line.
+
+    Args:
+        start (NDArray): The start point of the line.
+        end (NDArray): The end point of the line.
+        point (NDArray): The point to be checked.
+
+    Returns:
+        tuple[NDArray, float]: The closest point on the line and the distance.
+    """
+    line = end - start
+    line_norm = np.linalg.norm(line)
+    line_unit = line / line_norm
+    point_vector = point - start
+    t = np.dot(point_vector, line_unit)
+    t = np.clip(t, 0, line_norm)
+    closest_point = start + t * line_unit
+    distance = np.linalg.norm(closest_point - point)
+    return closest_point, distance.astype(float)

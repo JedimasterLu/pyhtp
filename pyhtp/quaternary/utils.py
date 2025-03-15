@@ -178,3 +178,25 @@ def build_tetrahedron(
         for i in range(1, tick_number):
             tick = vertices[start] + (vertices[end] - vertices[start]) * i / tick_number
             ax.plot([tick[0]], [tick[1]], [tick[2]], 'ko', markersize=2)
+
+
+def get_chemical_formula(
+        element_order: list[str],
+        coord: NDArray | list[float],
+        if_subscript: bool = True) -> str:
+    """Get the chemical formula of each point.
+
+    Args:
+        element_order (tuple[str, str, str, str]): The order of elements in the database.
+        coord (np.ndarray): The compositional coordinates of each point.
+        if_subscript (bool, optional): If the subscript is needed. Defaults to True.
+            If true, the number will be subscripted.
+    """
+    # Check if the length of element_order and coord is the same
+    if len(element_order) != len(coord):
+        raise ValueError("The length of element_order and coord should be the same.")
+    if not if_subscript:
+        return ''.join([f"{element_order[i]}{round(coord[i], 2)}"
+                        for i in range(len(element_order))])
+    return ''.join([f"{element_order[i]}$_{{{round(coord[i], 2)}}}$"
+                    for i in range(len(element_order))])

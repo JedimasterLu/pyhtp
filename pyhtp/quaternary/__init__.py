@@ -4,5 +4,5 @@ Package: pyhtp.quaternary
 Author: Junyuan Lu
 Contact: Lujunyuan@sjtu.edu.cn
 """
-from .scatter import plot_quat_scatter, label_modify  # noqa
+from .scatter import plot_quat_scatter, label_modify, get_index_on_line  # noqa
 from .surface import plot_quat_surface  # noqa
