@@ -16,11 +16,33 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 
 class QuatPlot:
-    """A class for quaternary phase diagram."""
+    """A class for quaternary phase diagram.
+
+    This class serves as a tool for QuatScatter and QuatSurface.
+
+    Attributes:
+        axis_label (tuple[str, str, str, str]): The labels of the axes.
+        fig (Figure): The figure of the plot.
+        ax (Axes3D): The axes of the plot.
+        params (dict): The parameters of the plot.
+            - fontfamily: The font family of the labels.
+            - axiscolor: The color of the axis.
+            - axistextsize: The size of the axis text.
+            - facecolor: The color of the face.
+            - facealpha: The alpha of the face.
+            - ticksize: The size of the ticks.
+            - ticknumber: The number of ticks.
+        artists (dict): The artists of the plot. The key is the name of the artist.
+            And the value is the artist handle itself.
+        legend_handles (list): The handles of the legend.
+        legend_labels (list): The labels of the legend.
+        _vertices (np.array): The vertices of the tetrahedron.
+    """
     def __init__(
             self,
             axis_label: tuple[str, str, str, str],
-            ax: Axes3D | None = None):
+            ax: Axes3D | None = None,
+            **kwargs):
         """Initialize the quaternary phase diagram.
 
         Args:
@@ -28,18 +50,26 @@ class QuatPlot:
             ax (Axes3D | None, optional): Defaults to None.
                 If None, a new figure will be created.
                 Otherwise, the plot will be added to the ax.
+            **kwargs: Parameters for self.params.
+                - fontfamily: The font family of the labels.
+                - axiscolor: The color of the axis.
+                - axistextsize: The size of the axis text.
+                - facecolor: The color of the face.
+                - facealpha: The alpha of the face.
+                - ticksize: The size of the ticks.
+                - ticknumber: The number of ticks.
 
         Raises:
             ValueError: If the input ax is not an instance of Axes3D.
         """
         self.axis_label = axis_label
 
-        self.vertices = np.array([
+        self._vertices = np.array([
             [0, 0, 0],
             [1, 0, 0],
             [0.5, np.sqrt(3) / 2, 0],
             [0.5, np.sqrt(3) / 6, np.sqrt(6) / 3]])
-        self.vertices -= np.mean(self.vertices, axis=0)
+        self._vertices -= np.mean(self._vertices, axis=0)
 
         if ax is None:
             self.fig = plt.figure(figsize=(8, 6))
@@ -53,13 +83,14 @@ class QuatPlot:
         assert isinstance(self.fig, Figure)
 
         self.params = {
-            'fontfamily': 'DejaVu Sans',
-            'axiscolor': 'darkslategray',
-            'axistextsize': 18,
-            'facecolor': 'lightgray',
-            'facealpha': 0.05,
-            'ticksize': 2,
-            'ticknumber': 5
+            'fontfamily': kwargs.pop('fontfamily', 'DejaVu Sans'),
+            'axiscolor': kwargs.pop('axiscolor', 'darkslategray'),
+            'axislinewidth': kwargs.pop('axislinewidth', 1),
+            'axistextsize': kwargs.pop('axistextsize', 18),
+            'facecolor': kwargs.pop('facecolor', 'tab:blue'),
+            'facealpha': kwargs.pop('facealpha', 0.05),
+            'ticksize': kwargs.pop('ticksize', 2),
+            'ticknumber': kwargs.pop('ticknumber', 5)
         }
 
         self._build_tetrahedron()
@@ -72,29 +103,30 @@ class QuatPlot:
     def _build_tetrahedron(self):
         """Build a tetrahedron."""
         # Add the tetrahedron to the plot
-        faces = [[self.vertices[j] for j in [0, 1, 2]],
-                 [self.vertices[j] for j in [0, 1, 3]],
-                 [self.vertices[j] for j in [0, 2, 3]],
-                 [self.vertices[j] for j in [1, 2, 3]]]
+        faces = [[self._vertices[j] for j in [0, 1, 2]],
+                 [self._vertices[j] for j in [0, 1, 3]],
+                 [self._vertices[j] for j in [0, 2, 3]],
+                 [self._vertices[j] for j in [1, 2, 3]]]
         self.ax.add_collection3d(
             Poly3DCollection(
-                faces, alpha=self.params['facealpha'], linewidths=1,
+                faces, alpha=self.params['facealpha'],
+                linewidths=self.params['axislinewidth'],
                 facecolors=self.params['facecolor'],
                 edgecolors=self.params['axiscolor']))
         # Add labels to the vertices
         pad = 0.08
         for i, txt in enumerate(self.axis_label):
             if i == 0:
-                coord = self.vertices[i] + np.array(
+                coord = self._vertices[i] + np.array(
                     [-np.sqrt(3) * pad / 2, - pad / 2, - pad / 2])
             elif i == 1:
-                coord = self.vertices[i] + np.array(
+                coord = self._vertices[i] + np.array(
                     [np.sqrt(3) * pad / 2, - pad / 2, - pad / 2])
             elif i == 2:
-                coord = self.vertices[i] + np.array(
+                coord = self._vertices[i] + np.array(
                     [0, pad, - pad / 2])
             else:
-                coord = self.vertices[i] + np.array(
+                coord = self._vertices[i] + np.array(
                     [0, 0, pad / 2])
             self.ax.text(
                 coord[0], coord[1], coord[2], txt,
@@ -112,8 +144,8 @@ class QuatPlot:
         # Add ticks on the edges
         for start, end in [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)]:
             for i in range(1, self.params['ticknumber']):
-                tick = self.vertices[start] + \
-                    (self.vertices[end] - self.vertices[start]) * i \
+                tick = self._vertices[start] + \
+                    (self._vertices[end] - self._vertices[start]) * i \
                     / self.params['ticknumber']
                 self.ax.plot(
                     [tick[0]], [tick[1]], [tick[2]], 'o',
@@ -128,12 +160,14 @@ class QuatPlot:
                 - fontfamily: The font family of the labels.
                 - axiscolor: The color of the axis.
                 - axistextsize: The size of the axis text.
+                - axislinewidth: The width of the axis.
                 - facecolor: The color of the face.
                 - facealpha: The alpha of the face.
                 - ticksize: The size of the ticks.
                 - ticknumber: The number of ticks.
         """
         self.params.update(kwargs)
+        self.refresh()
 
     @staticmethod
     def _get_colors(
@@ -176,7 +210,7 @@ class QuatPlot:
         Returns:
             NDArray[np.float64]: The Cartesian coordinates. Shape (n, 3).
         """
-        return np.dot(coords, self.vertices)
+        return np.dot(coords, self._vertices)
 
     def car_to_tet(self, coords: NDArray[np.float64]) -> NDArray[np.float64]:
         """Convert Cartesian coordinates to tetrahedral coordinates.
@@ -187,19 +221,20 @@ class QuatPlot:
         Returns:
             NDArray[np.float64]: The tetrahedral coordinates. Shape (n, 4).
         """
-        return np.dot(coords, np.linalg.inv(self.vertices))
+        return np.dot(coords, np.linalg.inv(self._vertices))
 
     def scatter(
             self,
             coords: NDArray[np.float64],
             value: list | NDArray | None = None,
             cmap: str = 'viridis',
-            color: list[str] | NDArray[np.str_] | None = None,
+            color: list[str] | NDArray[np.str_] | str = 'tab:blue',
             group_color: dict[str, str] | None = None,
             artist_name: str | None = None,
             marker: str = 'o',
             markersize: int = 10,
-            max_legend_number: int = 20) -> PathCollection:
+            max_legend_number: int = 20,
+            picker: bool = False) -> PathCollection:
         """Add scatter plot to the quaternary phase diagram.
 
         If value is provided, the color will be determined by the value.
@@ -209,46 +244,44 @@ class QuatPlot:
             coords (NDArray[np.float64]): The coordinates. Shape (n, 4).
             value (list | NDArray | None, optional): The value of the points. Defaults to None.
             cmap (str, optional): The colormap. Defaults to 'viridis'.
-            color (list[str] | NDArray[np.str_] | None, optional): The color of the points.
-                Defaults to None.
+            color (list[str] | NDArray[np.str_] | str, optional):
+                The color of the points. Defaults to 'tab:blue'. If str, all points
+                will have the same color.
             group_color (dict[str, str] | None, optional): The color of the groups.
                 Defaults to None.
             artist_name (str | None, optional): The name of the artist. Defaults to None.
             marker (str, optional): The marker of the points. Defaults to 'o'.
             markersize (int, optional): The size of the markers. Defaults to 10.
             max_legend_number (int, optional): The maximum number of legends. Defaults to 20.
+            picker (bool, optional): Whether to enable the picker. Defaults to False.
 
         Returns:
             PathCollection: The scatter plot artist.
         """
-        if color is None and value is None:
-            artist = self.ax.scatter(
-                *self.tet_to_car(coords).T, c='tab:blue', s=markersize)
-        elif color is not None and value is None:
+        artist = None
+        if value is None:
             artist = self.ax.scatter(
                 *self.tet_to_car(coords).T, c=color, s=markersize)
-        elif value is not None and color is None:
+        elif value is not None:
             if group_color is None:
                 color_of_groups = self._get_colors(len(np.unique(value)), cmap)
                 group_color = dict(zip(np.unique(value), color_of_groups))
             color = [group_color[i] for i in value]
             artist = self.ax.scatter(
-                *self.tet_to_car(coords).T, c=color, s=markersize,
-                marker=marker)
+                *self.tet_to_car(coords).T,
+                c=color, s=markersize, marker=marker, picker=picker)
             if len(group_color) <= max_legend_number:
                 self.legend_handles.extend(
                     [Line2D([0], [0], marker=marker, color='w', label=group_name,
-                            markerfacecolor=group_color[group_name],
-                            markersize=markersize)
+                            markerfacecolor=group_color[group_name], markersize=10)
                      for group_name in group_color])
                 self.legend_labels.extend(list(group_color.keys()))
-        else:
-            raise ValueError("Either color or label should be None.")
         # Put the handle of the artist into the artists dictionary
         if artist_name is None:
             # Get the number of scatter artists
             current_scatter_num = len([i for i in self.artists if 'scatter' in i])
             artist_name = f'scatter_{current_scatter_num}'
+        assert isinstance(artist, PathCollection)
         self.artists[artist_name] = artist
         return artist
 
@@ -434,8 +467,8 @@ class QuatPlot:
             self.legend_handles, self.legend_labels,
             loc=kwargs.pop('loc', 'center left'),
             bbox_to_anchor=kwargs.pop('bbox_to_anchor', (0.7, 0.8)),
-            fontfamily=kwargs.pop('fontfamily', self.params['fontfamily']),
-            fontsize=kwargs.pop('fontsize', 12),
+            prop={'family': kwargs.pop('fontfamily', self.params['fontfamily']),
+                  'size': kwargs.pop('fontsize', 12)},
             **kwargs)
 
     def save_fig(
