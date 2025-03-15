@@ -853,7 +853,7 @@ class XRDDatabase:
         Returns:
             NDArray[float]: The encoded peaks. Shape: (n_patterns, features).
         """
-        existing_peaks = self.existing_two_theta(
+        existing_peaks = self.existing_two_theta_legacy(
             two_theta=two_theta,
             peak_number=peak_number)
         # Encode the peaks
@@ -921,3 +921,38 @@ class XRDDatabase:
             cluster_centers = model.centroids_.flatten()
         # Third, get the characteristic peaks as the center of each cluster
         return np.sort(cluster_centers)
+
+    @staticmethod
+    def existing_two_theta_legacy(
+            two_theta: list[NDArray[np.float64]],
+            peak_number: int | None = None) -> NDArray[np.float64]:
+        """Return the combined diffraction peaks of all the patterns.
+
+        The peaks are clustered by kmeans.
+        For example, if there are two patterns, the peaks angles are [22, 50] and [21, 40, 50], respectively.
+        Then the combined peaks will be [21.5, 40, 50] or [21, 22, 40, 50], based on the n_cluster of kmeans.
+        The function is for the diffraction peak encoding process in classify function.
+
+        Args:
+            two_theta (list[NDArray]): The peak angles of all the patterns. [pattern_1, pattern_2, ...]
+            peak_number (int, optional): The number of clusters for kmeans. Defaults to None.
+                If None, the function will use the peak quantity of the pattern with most peaks.
+
+        Returns:
+            NDArray[float]: The combined diffraction peaks.
+        """
+        from sklearn.cluster import KMeans  # type: ignore  # pylint: disable=import-outside-toplevel
+        if peak_number is None:
+            # Get the max peak number as k_value for kmeans
+            peak_number = max(len(i) for i in two_theta)
+        assert isinstance(peak_number, int)
+        # Get the characteristic peaks
+        # First, concatenate all the peaks
+        all_peaks = np.concatenate(two_theta).reshape(-1, 1)
+        # Second, use kmeans to cluster the peaks
+        kmeans = KMeans(
+            n_clusters=peak_number,
+            random_state=0, tol=1e-5).fit(all_peaks)
+        # Third, get the characteristic peaks as the center of each cluster
+        existing_two_thetas = np.sort(kmeans.cluster_centers_[:, 0])
+        return existing_two_thetas
