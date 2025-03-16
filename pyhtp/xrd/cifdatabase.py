@@ -68,7 +68,7 @@ class CIFDatabase:
             if_save: bool = True):
         """Process the cif files in the file_dir and generate the data.
         """
-        cif_files = os.listdir(self._file_dir)
+        cif_files = sorted(os.listdir(self._file_dir))
         data: list[CIFData] = []
         for file_name in cif_files:
             if file_name.split('.')[-1] != 'cif':

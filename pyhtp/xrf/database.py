@@ -66,9 +66,9 @@ class XRFDatabase:
         self._file_dir = file_dir
         # Get the elements from the file names
         if elements is None:
-            self.elements = [file_path.split('.')[0]
-                             for file_path in os.listdir(file_dir)
-                             if file_path.endswith('.txt')]
+            self.elements = [
+                file_path.split('.')[0] for file_path in sorted(os.listdir(file_dir))
+                if file_path.endswith('.txt')]
         else:
             self.elements = list(elements)
         # If data is directly provided, skip the reading process
@@ -112,7 +112,7 @@ class XRFDatabase:
         raw_data = []
         self._vertices = []
         # Firstly, implort the raw data
-        for file_path in os.listdir(self._file_dir):
+        for file_path in sorted(os.listdir(self._file_dir)):
             if not file_path.endswith('.txt'):
                 continue
             data = self._read_data(os.path.join(self._file_dir, file_path))
@@ -154,7 +154,7 @@ class XRFDatabase:
 
     def _read_dir(self, file_dir: str, vertices: list[MaskVertices] | None = None):
         """Set the self.data using _read_data."""
-        txt_files = [file_path for file_path in os.listdir(file_dir)
+        txt_files = [file_path for file_path in sorted(os.listdir(file_dir))
                      if file_path.endswith('.txt')]
         if vertices is None:
             for file_path in txt_files:
