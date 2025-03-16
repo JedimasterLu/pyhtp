@@ -232,7 +232,7 @@ class QuatPlot:
 
     def scatter(
             self,
-            coords: NDArray[np.float64],
+            coords: NDArray[np.float64] | list[tuple[float, float, float, float]],
             value: list | NDArray | None = None,
             cmap: str = 'viridis',
             color: list[str] | NDArray[np.str_] | str = 'tab:blue',
@@ -265,10 +265,15 @@ class QuatPlot:
         Returns:
             PathCollection: The scatter plot artist.
         """
+        coords = np.array(coords)
+        # Normalize the coordinates so that the sum of each row is 1
+        coords = coords / np.sum(coords, axis=1)[:, None]
+        assert isinstance(coords, np.ndarray) and coords.shape[1] == 4
+
         artist = None
         if value is None:
             artist = self.ax.scatter(
-                *self.tet_to_car(coords).T, c=color, s=markersize)
+                *self.tet_to_car(coords).T, marker=marker, c=color, s=markersize)
         elif value is not None:
             if group_color is None:
                 color_of_groups = self._get_colors(len(np.unique(value)), cmap)
@@ -294,7 +299,7 @@ class QuatPlot:
 
     def line(
             self,
-            coords: NDArray[np.float64],
+            coords: NDArray[np.float64] | list[tuple[float, float, float, float]],
             color: str = 'tab:blue',
             linewidth: float = 2,
             linestyle: str = '-',
@@ -304,7 +309,7 @@ class QuatPlot:
         """Add a line to the quaternary phase diagram.
 
         Args:
-            coords (NDArray[np.float64]):
+            coords (NDArray[np.float64] | list[tuple[float, float, float, float]]):
                 The quatenary coordinates of all the points. Shape (n, 4).
             color (str, optional): Defaults to 'tab:blue'.
             linewidth (float, optional): Defaults to 2.
@@ -317,6 +322,11 @@ class QuatPlot:
         Returns:
             Line2D: The line artist
         """
+        coords = np.array(coords)
+        # Normalize the coordinates so that the sum of each row is 1
+        coords = coords / np.sum(coords, axis=1)[:, None]
+        assert isinstance(coords, np.ndarray) and coords.shape[1] == 4
+
         # Check if the length of the coordinates is correct
         if coords.ndim != 2 or coords.shape[1] != 4:
             raise ValueError("The shape of coords should be (n, 4).")
@@ -337,7 +347,7 @@ class QuatPlot:
 
     def surface(
             self,
-            coords: NDArray[np.float64],
+            coords: NDArray[np.float64] | list[tuple[float, float, float, float]],
             value: NDArray[np.float64] | None = None,
             cmap: str = 'viridis',
             color: list[str] | NDArray[np.str_] | None = None,
@@ -361,6 +371,11 @@ class QuatPlot:
         Returns:
             Poly3DCollection: The surface artist.
         """
+        coords = np.array(coords)
+        # Normalize the coordinates so that the sum of each row is 1
+        coords = coords / np.sum(coords, axis=1)[:, None]
+        assert isinstance(coords, np.ndarray) and coords.shape[1] == 4
+
         if color is not None:
             color = np.array(color).flatten()
             assert color.shape[0] == coords.shape[0]

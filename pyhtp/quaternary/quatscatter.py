@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numpy.typing import NDArray
 from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
 from matplotlib.collections import PathCollection
 from mpl_toolkits.mplot3d import Axes3D
 from .quatplot import QuatPlot
@@ -237,15 +238,13 @@ class QuatScatter(QuatPlot):
 
         def _refresh(event):
             """Read json file and refresh the scatter with new labels."""
-            # Detect double right click
-            if not (event.dblclick and event.button) == 3:
+            # Detect if the r is pressed
+            if not event.key == 'r':
                 return
             # Read the json file
             self.value_modify(self._json_path)
             # Remove the scatter artist in self.artists
-            to_remove = [name for name in self.artists if 'scatter' in name]
-            for name in to_remove:
-                self.artists.pop(name)
+            self.artists.pop('scatter_main')
             self.legend_handles = []
             self.legend_labels = []
             # Plot the scatter points
@@ -285,8 +284,8 @@ class QuatScatter(QuatPlot):
             self.params['zlim'] = event.inaxes.get_zlim()
 
         def _default_view(event):
-            """Set to default view when double middle click."""
-            if not (event.dblclick and event.button == 2):
+            """Set to default view when press d."""
+            if not event.key == 'd':
                 return
             self.params['elev'] = None
             self.params['azim'] = None
@@ -301,9 +300,15 @@ class QuatScatter(QuatPlot):
 
         assert isinstance(self.fig, Figure)
         self.fig.canvas.mpl_connect('pick_event', _onpick)
-        self.fig.canvas.mpl_connect('button_press_event', _refresh)
+        self.fig.canvas.mpl_connect('key_press_event', _refresh)
         self.fig.canvas.mpl_connect('motion_notify_event', _store_view)
-        self.fig.canvas.mpl_connect('button_press_event', _default_view)
+        self.fig.canvas.mpl_connect('key_press_event', _default_view)
+
+        print(
+            "Interactive manual:\n"
+            "1. Double left click on a point to show the XRD pattern.\n"
+            "2. Press 'r' to refresh the plot after twicking the json file.\n"
+            "3. Press 'd' to set the plot to default view.\n")
 
     def _resize_scatter(self) -> None:
         """Resize the scatter points when self._picked_point_index is not empty."""
@@ -315,15 +320,53 @@ class QuatScatter(QuatPlot):
             sizes = np.full(len(self.value), size)
             sizes[index] = size * 2
             # Update the size of the scatter points
-            artist_name = [name for name in self.artists if 'scatter' in name][0]
-            self.artists[artist_name].set(sizes=sizes)
+            self.artists['scatter_main'].set(sizes=sizes)
         else:
             # Reset the size of the scatter points
-            artist_name = [name for name in self.artists if 'scatter' in name][0]
             sizes = np.full(len(self.value), self.params.get('markersize', 10))
-            self.artists[artist_name].set(sizes=sizes)
+            self.artists['scatter_main'].set(sizes=sizes)
         # Refresh the plot
         self.refresh()
+
+    def line(
+            self,
+            coords: NDArray[np.float64] | list[tuple[float, float, float, float]] | list[int],
+            color: str = 'tab:blue',
+            linewidth: float = 2,
+            linestyle: str = '-',
+            label: str | None = None,
+            alpha: float = 1,
+            artist_name: str | None = None) -> Line2D:
+        """Add a line to the quaternary phase diagram.
+
+        Args:
+            coords (NDArray[np.float64] | list[tuple[float, float, float, float]]):
+                The quatenary coordinates of all the points. Shape (n, 4).
+            color (str, optional): Defaults to 'tab:blue'.
+            linewidth (float, optional): Defaults to 2.
+            linestyle (str, optional): Defaults to '-'.
+            label (str | None, optional): Defaults to None. The label of the line.
+                If provided, the line will be added to the legend.
+            alpha (float, optional): Defaults to 1. The transparency of the line.
+            artist_name (str | None, optional): Defaults to None. The name of the artist.
+
+        Returns:
+            Line2D: The line artist
+        """
+        # Deal with the case that coords is a list of int
+        if isinstance(coords[0], int):
+            coords = self.index_map[coords].tolist()  # type: ignore
+            coords = self.coords[coords]  # type: ignore
+        print(coords)
+        assert isinstance(coords, np.ndarray) or isinstance(coords, list)
+        return super().line(
+            coords=coords,  # type: ignore
+            color=color,
+            linewidth=linewidth,
+            linestyle=linestyle,
+            label=label,
+            alpha=alpha,
+            artist_name=artist_name)
 
     def plot(
             self,
@@ -352,7 +395,51 @@ class QuatScatter(QuatPlot):
             marker=marker,
             markersize=markersize,
             max_legend_number=len(np.unique(self.value)) + 1,
-            picker=True)
+            picker=True, artist_name='scatter_main')
         self.params['marker'] = marker
         self.params['markersize'] = markersize
         return artist
+
+    def get_index_on_line(
+            self,
+            start: tuple[float, float, float, float] | NDArray[np.float64] | int,
+            end: tuple[float, float, float, float] | NDArray[np.float64] | int,
+            tol: float = 0.01) -> NDArray[np.int_]:
+        """Get the index of points on a line.
+
+        Args:
+            start (tuple[float, float, float]): The start point of the line.
+            end (tuple[float, float, float]): The end point of the line.
+            tol (float, optional): Defaults to 0.01.
+
+        Returns:
+            NDArray[np.int_]: The index of points on the line.
+        """
+        if not isinstance(start, int) and not isinstance(end, int):
+            start = self.tet_to_car(np.array(start))
+            end = self.tet_to_car(np.array(end))
+        elif isinstance(start, int) and isinstance(end, int):
+            start = int(self.index_map[start])
+            end = int(self.index_map[end])
+            start = self.tet_to_car(self.coords[start])
+            end = self.tet_to_car(self.coords[end])
+        else:
+            raise ValueError(
+                "The start and end should be both int or both tuple or "
+                "both np.ndarray.")
+        line = end - start
+        line_unit = line / np.linalg.norm(line)
+        # Get the index of the points on the line
+        points = []
+        for i, car_coord in enumerate(self.tet_to_car(self.coords)):
+            current_vec = car_coord - start
+            t = np.dot(current_vec, line_unit)
+            t = np.clip(t, 0, np.linalg.norm(line))
+            closest = start + t * line_unit
+            if np.linalg.norm(closest - car_coord) > tol:
+                continue
+            t_closest = np.dot(closest - start, line_unit)
+            if t_closest < -tol or t_closest > np.linalg.norm(line) + tol:
+                continue
+            points.append(i)
+        return self.index_map[points]
