@@ -84,7 +84,7 @@ class XRDDatabase:
                     if not os.path.isdir(path):
                         raise FileNotFoundError(f'{path} in the file_dir is not found!')
                     file_numbers.append(
-                        len([file_name for file_name in os.listdir(path)
+                        len([file_name for file_name in sorted(os.listdir(path))
                             if file_name.endswith('.xy')]))
                 if len(set(file_numbers)) != 1:
                     raise ValueError(
@@ -216,7 +216,8 @@ class XRDDatabase:
         data: list[XRDPattern] = []
         for i, path in enumerate(file_dir):
             # Exclude the files that are not .xy files
-            file_names = [file_name for file_name in os.listdir(path) if file_name.endswith('.xy')]
+            file_names = [file_name for file_name in sorted(os.listdir(path))
+                          if file_name.endswith('.xy')]
             # Read the data
             for j, file_name in enumerate(file_names):
                 two_theta_range = (
