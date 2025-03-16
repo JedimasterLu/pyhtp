@@ -13,6 +13,7 @@ from scipy.signal import savgol_filter, find_peaks
 from scipy.interpolate import make_smoothing_spline
 from matplotlib.axes import Axes
 from matplotlib.colors import Colormap
+from matplotlib.figure import Figure
 from pybaselines import Baseline
 from ..typing import PatternInfo, AngleRange, CIFData, PeakParam
 from .cifdatabase import CIFDatabase
@@ -411,6 +412,7 @@ class XRDPattern:
             cmap: str | Colormap = '',
             title: str | None = None,
             ylim: tuple[float | int, float | int] | None = None,
+            fig: Figure | None = None,
             **kwargs) -> None:
         """Plot the diffraction pattern with the matched reference phase XRD data.
 
@@ -426,6 +428,7 @@ class XRDPattern:
             title (str, optional): The title of the plot. Defaults to None.
             ylim (tuple[float | int, float | int] | None, optional): The y-axis limit of the
                 pattern. Defaults to None. If None, the y-axis limit will be set automatically.
+            fig (Figure, optional): The matplotlib figure. Defaults to None.
             **kwargs: The keyword arguments for match and the plot.
                 - two_theta_tol (float): The tolerance of two theta for peak matching.
                     Defaults to 0.1.
@@ -443,7 +446,12 @@ class XRDPattern:
             mask_param=kwargs.get('mask_param', None),
             max_intensity=kwargs.get('max_intensity', None))
         # Plot the pattern in vertical subplots
-        fig, axs = plt.subplots(number + 1, 1, figsize=(6, 2 * number), sharex=True)
+        if fig is None:
+            fig = plt.figure(figsize=(6, 2 * number))
+        else:
+            fig.set_size_inches(6, 2 * number)
+        assert isinstance(fig, Figure)
+        axs = fig.subplots(number + 1, 1, sharex=True)
         fig.subplots_adjust(hspace=0)
         self.plot(ax=axs[0], **kwargs)  # type: ignore
         if ylim:
@@ -469,8 +477,7 @@ class XRDPattern:
                     right=self.two_theta[-1]))
         # Set the title
         if title:
-            axs[0].set_title(title)  # type: ignore
-        plt.show()
+            fig.suptitle(title)  # type: ignore
 
     def save_txt(
             self,

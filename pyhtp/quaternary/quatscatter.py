@@ -94,6 +94,7 @@ class QuatScatter(QuatPlot):
         self.value = self.value[index_map].astype('<U100')
 
         self._json_path = ''
+        self._picked_point_index = []
 
     def rotate90(self, times: int = 1) -> None:
         """Rotate the coordinates 90 degrees.
@@ -204,6 +205,10 @@ class QuatScatter(QuatPlot):
                 return
             assert len(index) == 1
             index = index[0]
+            # Append the index to the picked point list
+            if index not in self._picked_point_index:
+                self._picked_point_index.append(index)
+            self._resize_scatter()
             # Get the xrd pattern of the specific point
             pattern = xrd_database.data[index]
             # Get the chemical formula of the specific point
@@ -211,21 +216,24 @@ class QuatScatter(QuatPlot):
                 list(self.axis_label), self.coords[event.ind[0]])
             # Plot the xrd pattern of the specific point
             if cif_database is None:
-                _, ax = plt.subplots()
+                fig, ax = plt.subplots()
                 pattern.plot(
                     ax=ax,
                     max_intensity=xrd_database.intensity.max(),
                     **kwargs)
-                ax.set_title(f"{formula} - {pattern.info.index}")
+                fig.suptitle(f"{formula} - {pattern.info.index}")
                 if ylim:
                     ax.set_ylim(*ylim)
-                plt.show()
             else:
+                fig = plt.figure()
                 pattern.plot_with_ref(
+                    fig=fig,
                     cif_database=cif_database,
                     title=f"{formula} - {pattern.info.index}",
                     max_intensity=xrd_database.intensity.max(),
                     ylim=ylim, **kwargs)
+            fig.canvas.mpl_connect('close_event', _onclose)
+            plt.show()
 
         def _refresh(event):
             """Read json file and refresh the scatter with new labels."""
@@ -243,15 +251,51 @@ class QuatScatter(QuatPlot):
             # Plot the scatter points
             self.plot(marker=self.params.get('marker', 'o'),
                       markersize=self.params.get('markersize', 10))
+            self._resize_scatter()
             # Refresh the plot
             self.refresh()
             # Add legend back
             if self.legend_handles:
                 self.legend()
 
+        def _onclose(event):
+            """Close event.
+
+            When figure is closed, remove the index from self._picked_point_index.
+            """
+            # Get the index from title
+            fig_handle = event.canvas.manager.canvas.figure
+            title = fig_handle._suptitle.get_text()  # pylint: disable=protected-access
+            index = int(title.split('-')[1].strip())
+            # Remove the index from the list
+            while index in self._picked_point_index:
+                self._picked_point_index.remove(index)
+            # Reset the sizes of the scatter
+            self._resize_scatter()
+
         assert isinstance(self.fig, Figure)
         self.fig.canvas.mpl_connect('pick_event', _onpick)
         self.fig.canvas.mpl_connect('button_press_event', _refresh)
+
+    def _resize_scatter(self) -> None:
+        """Resize the scatter points when self._picked_point_index is not empty."""
+        if self._picked_point_index:
+            # Get the index of the picked points
+            index = self.index_map[np.array(self._picked_point_index)]
+            # Get the size of the scatter points
+            size = self.params.get('markersize', 10)
+            sizes = np.full(len(self.value), size)
+            sizes[index] = size * 2
+            # Update the size of the scatter points
+            artist_name = [name for name in self.artists if 'scatter' in name][0]
+            self.artists[artist_name].set(sizes=sizes)
+        else:
+            # Reset the size of the scatter points
+            artist_name = [name for name in self.artists if 'scatter' in name][0]
+            sizes = np.full(len(self.value), self.params.get('markersize', 10))
+            self.artists[artist_name].set(sizes=sizes)
+        # Refresh the plot
+        self.refresh()
 
     def plot(
             self,
