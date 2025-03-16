@@ -273,9 +273,34 @@ class QuatScatter(QuatPlot):
             # Reset the sizes of the scatter
             self._resize_scatter()
 
+        def _store_view(event):
+            """Store the view and lim of the plot when rotated and zoomed."""
+            if event.inaxes is None:
+                return
+            self.params['elev'] = event.inaxes.elev
+            self.params['azim'] = event.inaxes.azim
+            self.params['roll'] = event.inaxes.roll
+            self.params['xlim'] = event.inaxes.get_xlim()
+            self.params['ylim'] = event.inaxes.get_ylim()
+            self.params['zlim'] = event.inaxes.get_zlim()
+
+        def _default_view(event):
+            """Set to default view when double middle click."""
+            if not (event.dblclick and event.button == 2):
+                return
+            self.params['elev'] = None
+            self.params['azim'] = None
+            self.params['roll'] = None
+            self.params['xlim'] = (-0.38, 0.38)
+            self.params['ylim'] = (-0.38, 0.38)
+            self.params['zlim'] = (-0.38, 0.38)
+            self.refresh()
+
         assert isinstance(self.fig, Figure)
         self.fig.canvas.mpl_connect('pick_event', _onpick)
         self.fig.canvas.mpl_connect('button_press_event', _refresh)
+        self.fig.canvas.mpl_connect('motion_notify_event', _store_view)
+        self.fig.canvas.mpl_connect('button_press_event', _default_view)
 
     def _resize_scatter(self) -> None:
         """Resize the scatter points when self._picked_point_index is not empty."""

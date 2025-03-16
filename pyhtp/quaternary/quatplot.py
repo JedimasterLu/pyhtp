@@ -90,7 +90,10 @@ class QuatPlot:
             'facecolor': kwargs.pop('facecolor', 'tab:blue'),
             'facealpha': kwargs.pop('facealpha', 0.05),
             'ticksize': kwargs.pop('ticksize', 2),
-            'ticknumber': kwargs.pop('ticknumber', 5)
+            'ticknumber': kwargs.pop('ticknumber', 5),
+            'xlim': kwargs.pop('xlim', (-0.38, 0.38)),
+            'ylim': kwargs.pop('ylim', (-0.38, 0.38)),
+            'zlim': kwargs.pop('zlim', (-0.38, 0.38)),
         }
 
         self._build_tetrahedron()
@@ -135,12 +138,16 @@ class QuatPlot:
                 fontfamily=self.params['fontfamily'])
         # Set aspect and lims and axes
         self.ax.set_box_aspect([1, 1, 1])
-        lim_value = 0.38
-        self.ax.set_xlim(-lim_value, lim_value)
-        self.ax.set_ylim(-lim_value, lim_value)
-        self.ax.set_zlim(-lim_value, lim_value)
+        self.ax.set_xlim(*self.params['xlim'])
+        self.ax.set_ylim(*self.params['ylim'])
+        self.ax.set_zlim(*self.params['zlim'])
         self.ax.set_axis_off()
         self.ax.set_proj_type('persp')
+        self.ax.view_init(
+            elev=self.params.get('elev', None),
+            azim=self.params.get('azim', None),
+            roll=self.params.get('roll', None),
+            vertical_axis='z')
         # Add ticks on the edges
         for start, end in [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)]:
             for i in range(1, self.params['ticknumber']):
@@ -450,6 +457,15 @@ class QuatPlot:
         for artist in self.artists.values():
             self.ax.add_artist(artist)
         self.fig.tight_layout()
+        # Set elev, azim, and lim
+        self.ax.view_init(
+            elev=self.params.get('elev', None),
+            azim=self.params.get('azim', None),
+            roll=self.params.get('roll', None),
+            vertical_axis='z')
+        self.ax.set_xlim(*self.params['xlim'])
+        self.ax.set_ylim(*self.params['ylim'])
+        self.ax.set_zlim(*self.params['zlim'])
         plt.draw()
 
     def legend(self, **kwargs) -> None:
