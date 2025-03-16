@@ -354,7 +354,7 @@ class QuatScatter(QuatPlot):
             Line2D: The line artist
         """
         # Deal with the case that coords is a list of int
-        if isinstance(coords[0], int):
+        if isinstance(coords, list) and isinstance(coords[0], int):
             coords = self.index_map[coords].tolist()  # type: ignore
             coords = self.coords[coords]  # type: ignore
         print(coords)
