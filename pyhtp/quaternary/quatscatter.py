@@ -295,6 +295,9 @@ class QuatScatter(QuatPlot):
             self.params['ylim'] = (-0.38, 0.38)
             self.params['zlim'] = (-0.38, 0.38)
             self.refresh()
+            # Add legend back
+            if self.legend_handles:
+                self.legend()
 
         assert isinstance(self.fig, Figure)
         self.fig.canvas.mpl_connect('pick_event', _onpick)
@@ -321,9 +324,6 @@ class QuatScatter(QuatPlot):
             self.artists[artist_name].set(sizes=sizes)
         # Refresh the plot
         self.refresh()
-        # Add legend back
-        if self.legend_handles:
-            self.legend()
 
     def plot(
             self,
