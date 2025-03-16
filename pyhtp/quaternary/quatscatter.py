@@ -321,6 +321,9 @@ class QuatScatter(QuatPlot):
             self.artists[artist_name].set(sizes=sizes)
         # Refresh the plot
         self.refresh()
+        # Add legend back
+        if self.legend_handles:
+            self.legend()
 
     def plot(
             self,
