@@ -47,7 +47,8 @@ class CIFDatabase:
                 - if_save (bool, optional): This parameter is passed into process function.
                     If true, a pkl file containing the class will be saved to the file_dir
                     to speed up the initialization next time. Defaults to True.
-                - wavelength (str | float, optional): The wavelength of the X-ray. Defaults to 'CuKa'.
+                - wavelength (str | float, optional): The wavelength of the X-ray.
+                    Defaults to 'CuKa'.
                     Please refer to the pymatgen documentation for the available wavelength strings.
         """
         self._file_dir = file_dir
@@ -79,7 +80,8 @@ class CIFDatabase:
                 # Because the initial key is a long string, we need to get the first key.
                 cif_data = cif_data[str(list(cif_data.keys())[0])]
                 # Remove the spaces in cif_data['_space_group_name_H-M_alt']
-                cif_data['_space_group_name_H-M_alt'] = cif_data['_space_group_name_H-M_alt'].replace(' ', '')
+                cif_data['_space_group_name_H-M_alt'] = \
+                    cif_data['_space_group_name_H-M_alt'].replace(' ', '')
                 structure = Structure.from_file(file_path, primitive=False, merge_tol=0.01)
                 xrd = XRDCalculator(wavelength=wavelength)  # type: ignore
                 pattern = xrd.get_pattern(structure)
@@ -126,36 +128,53 @@ class CIFDatabase:
         """Get the index of reference phase data in database by some conditions.
 
         Note:
-            - The parameters have certain order of priority. The selection policy among different \
-            parameters is always ``and``. For example, if ``cif_name`` and ``icsd_code`` are both given, \
+            - The parameters have certain order of priority. The selection policy
+            among different parameters is always ``and``. For example,
+            if ``cif_name`` and ``icsd_code`` are both given,
             the data that meet both conditions will be appended to the result.
 
-            - The ``mode`` is for ``peak_two_theta`` and ``element`` conditions. DO NOT set ``mode`` to \
-            ``and`` or ``strict`` when using ``cif_name``, ``icsd_code``, ``space_group`` or \
-            ``space_group_number`` conditions. An error will be raised if you do so.
+            - The ``mode`` is for ``peak_two_theta`` and ``element`` conditions.
+            DO NOT set ``mode`` to ``and`` or ``strict`` when using ``cif_name``,
+            ``icsd_code``, ``space_group`` or ``space_group_number`` conditions.
+            An error will be raised if you do so.
 
         Args:
-            cif_name (str | list[str] | None, optional): The name of the cif file without .cif. Defaults to None.
-            icsd_code (int | list[int] | None, optional): The ICSD code of the data. Defaults to None.
-            space_group (str | list[str] | None, optional): The space group of the data. Defaults to None.
-            space_group_number (int | list[int] | None, optional): The space group number of the data. Defaults to None.
-            element (str | list[str] | None, optional): The element in the formula of the data. Defaults to None.
+            cif_name (str | list[str] | None, optional): The name of the cif file
+                without .cif. Defaults to None.
+            icsd_code (int | list[int] | None, optional): The ICSD code of the data.
+                Defaults to None.
+            space_group (str | list[str] | None, optional): The space group of the data.
+                Defaults to None.
+            space_group_number (int | list[int] | None, optional): The space group
+                number of the data. Defaults to None.
+            element (str | list[str] | None, optional): The element in the formula
+                of the data. Defaults to None.
             peak_two_theta (float | tuple[float, float] | list[float | tuple[float, float]] | None, optional):
                 The required two_theta of the data. Defaults to None.
-            two_theta_range (float, optional): The range of two_theta for float input of peak_two_theta.
-                The range is (float_two_theta - range / 2, float_two_theta + range / 2). Defaults to 0.2.
-            mode (Literal['and', 'or', 'strict'], optional): The mode of the search. Defaults to 'or'.
+            two_theta_range (float, optional): The range of two_theta for float input
+                of peak_two_theta.
+                The range is (float_two_theta - range / 2, float_two_theta + range / 2).
+                Defaults to 0.2.
+            mode (Literal['and', 'or', 'strict'], optional): The mode of the search.
+                Defaults to 'or'.
                 The mode is for element and peak_two_theta conditions. For the other 4 conditions,
-                since each reference phase data has only one cif_name, icsd_code, spcae_group and space_group_number,
+                since each reference phase data has only one cif_name, icsd_code,
+                spcae_group and space_group_number,
                 setting mode to ``and`` or ``strict`` is meaningless, and an error will be raise.
-                    - ``or``: As long as one condition is met, the data will be appended to the result.
-                    - ``and``: Only when all conditions are met, the data will be appended to the result.
-                    - ``strict``: The data must perfectly match all conditions to be appended to the result.
+                    - ``or``: As long as one condition is met, the data will be
+                        appended to the result.
+                    - ``and``: Only when all conditions are met, the data will be
+                        appended to the result.
+                    - ``strict``: The data must perfectly match all conditions to be
+                        appended to the result.
 
                 For example, if the input elements = ['Ge', 'Se']
-                    - ``or``: If Ge or Se is in the data.formula, the data will be appended to the result.
-                    - ``and``: If both Ge and Se are in the data.formula, the data will be appended to the result.
-                    - ``strict``: If the data.formula is exactly 'Gex Sey', the data will be appended to the result.
+                    - ``or``: If Ge or Se is in the data.formula, the data will be
+                        appended to the result.
+                    - ``and``: If both Ge and Se are in the data.formula, the data
+                        will be appended to the result.
+                    - ``strict``: If the data.formula is exactly 'Gex Sey', the data
+                        will be appended to the result.
 
         Returns:
             list[int]: The index of the reference phase data in the self.data list.
@@ -178,16 +197,19 @@ class CIFDatabase:
             peak_two_theta = [peak_two_theta]
             for i, two_theta in enumerate(peak_two_theta):
                 if isinstance(two_theta, float):
-                    peak_two_theta[i] = (two_theta - two_theta_range / 2, two_theta + two_theta_range / 2)
+                    peak_two_theta[i] = (two_theta - two_theta_range / 2,
+                                         two_theta + two_theta_range / 2)
         # Check the mode
         if (cif_name is not None
                 or icsd_code is not None
                 or space_group is not None
                 or space_group_number is not None) and mode != 'or':
-            raise ValueError('Each icsd data has only one cif_name, icsd_code, spcae_group and space_group_number. \
-                              Setting mode to "and" or "strict" is meaningless. \
-                              If you want to find data with element or peak_two_theta conditions, please use multiple \
-                              index functions and combine the results.')
+            raise ValueError(
+                'Each icsd data has only one cif_name, icsd_code, '
+                'spcae_group and space_group_number. '
+                'Setting mode to "and" or "strict" is meaningless. '
+                'If you want to find data with element or peak_two_theta conditions, '
+                'please use multiple index functions and combine the results.')
         # Find the index of the data
         # If the data meet the conditions, append the index to the result_index
         result_index: list[int] = []
@@ -225,21 +247,25 @@ class CIFDatabase:
                         and all(isinstance(two_theta, tuple)
                                 for two_theta in peak_two_theta))
                 if mode == 'or':
-                    # As long as one peaks of the data lies in any given two_theta range, else continue.
+                    # As long as one peaks of the data lies in any given two_theta range,
+                    # else continue.
                     continue_flag = True
                     for two_theta in peak_two_theta:
                         assert isinstance(two_theta, tuple)
-                        if any(two_theta[0] <= angle < two_theta[1] for angle in data.two_theta):
+                        if any(two_theta[0] <= angle < two_theta[1]
+                               for angle in data.two_theta):
                             continue_flag = False
                             break
                     if continue_flag:
                         continue
                 elif mode == 'and':
-                    # Only all peaks of the data lies in all given two_theta range, else continue.
+                    # Only all peaks of the data lies in all given two_theta range,
+                    # else continue.
                     continue_flag = False
                     for two_theta in peak_two_theta:
                         assert isinstance(two_theta, tuple)
-                        if not any(two_theta[0] <= angle < two_theta[1] for angle in data.two_theta):
+                        if not any(two_theta[0] <= angle < two_theta[1]
+                                   for angle in data.two_theta):
                             continue_flag = True
                             break
                     if continue_flag:
@@ -251,7 +277,8 @@ class CIFDatabase:
                     continue_flag = False
                     for two_theta in peak_two_theta:
                         assert isinstance(two_theta, tuple)
-                        if not any(two_theta[0] <= angle < two_theta[1] for angle in data.two_theta):
+                        if not any(two_theta[0] <= angle < two_theta[1]
+                                   for angle in data.two_theta):
                             continue_flag = True
                             break
                     if continue_flag:
@@ -299,8 +326,8 @@ class CIFDatabase:
                     - ``element``: The element in the formula of the data. Defaults to None.
                     - ``peak_two_theta``: The required two_theta of the data. Defaults to None.
                     - ``two_theta_range``: The range of two_theta for float input of peak_two_theta.
-                            The range is ``(float_two_theta - range / 2, float_two_theta + range / 2)``.
-                            Defaults to 0.2.
+                        The range is ``(float_two_theta - range / 2, float_two_theta + range / 2)``.
+                        Defaults to 0.2.
                     - ``mode``: The mode of the search. Defaults to ``or``.
 
                 For plot
