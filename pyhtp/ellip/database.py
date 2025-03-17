@@ -10,18 +10,18 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from numpy.typing import NDArray
-from .spectrum import EllipSpectrum
+from .spectrum import SESpectrum
 from ..typing import SampleInfo, SpectrumInfo
 
 
-class EllipDatabase:
+class SEDatabase:
     """A class to process the ellipsometry data of a high-throughput sample.
     """
     def __init__(
             self,
             file_path: str,
             info: SampleInfo):
-        """Create an instance of EllipDatabase from a csv file of the sample.
+        """Create an instance of SEDatabase from a csv file of the sample.
 
         Args:
             file_path (str): The path of the csv file. The file should be directly
@@ -45,7 +45,7 @@ class EllipDatabase:
         assert info.wavelength_range is not None
         for i in range(info.point_number):
             self.data.append(
-                EllipSpectrum(
+                SESpectrum(
                     n=dataset[f'n_{i}'].to_numpy(),
                     k=dataset[f'k_{i}'].to_numpy(),
                     wavelength=self.wavelength,
@@ -76,7 +76,7 @@ class EllipDatabase:
 
     def copy(self):
         """Return a copy of the class."""
-        return EllipDatabase(self._file_path, self.info)
+        return SEDatabase(self._file_path, self.info)
 
     def get_property(
             self,
@@ -132,18 +132,18 @@ class EllipDatabase:
 
     @staticmethod
     def fom(
-        crystalline_data: EllipDatabase,
-        amorphous_data: EllipDatabase,
+        crystalline_data: SEDatabase,
+        amorphous_data: SEDatabase,
         wavelength: float | list[float] | NDArray[np.float64] | None = None,
         index: int | list[int] | NDArray[np.int_] = -1,
     ) -> NDArray[np.float64]:
-        """Calculate the figure of merit of the sample from two EllipDatabase.
+        """Calculate the figure of merit of the sample from two SEDatabase.
 
         The FOM is defined as: FOM = (n_cry - n_amo) / (k_cry + k_amo)
 
         Args:
-            crystalline_data (EllipDatabase): The ellipsometry data of the crystalline sample.
-            amorphous_data (EllipDatabase): The ellipsometry data of the amorphous sample.
+            crystalline_data (SEDatabase): The ellipsometry data of the crystalline sample.
+            amorphous_data (SEDatabase): The ellipsometry data of the amorphous sample.
             wavelength (float | list[float] | NDArray[np.float64] | None, optional):
                 The parameter pass to get_property. Defaults to None.
             index (int | list[int] | NDArray[np.int_], optional):

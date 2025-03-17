@@ -47,14 +47,14 @@
 <li><a class="reference internal" href="#">pyhtp.ellip package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
 <li><a class="reference internal" href="#module-pyhtp.ellip.database">pyhtp.ellip.database module</a><ul>
-<li><a class="reference internal" href="#pyhtp.ellip.database.EllipDatabase"><code class="docutils literal notranslate"><span class="pre">EllipDatabase</span></code></a><ul>
-<li><a class="reference internal" href="#pyhtp.ellip.database.EllipDatabase.copy"><code class="docutils literal notranslate"><span class="pre">EllipDatabase.copy()</span></code></a></li>
-<li><a class="reference internal" href="#pyhtp.ellip.database.EllipDatabase.get_alpha"><code class="docutils literal notranslate"><span class="pre">EllipDatabase.get_alpha()</span></code></a></li>
-<li><a class="reference internal" href="#pyhtp.ellip.database.EllipDatabase.get_data"><code class="docutils literal notranslate"><span class="pre">EllipDatabase.get_data()</span></code></a></li>
-<li><a class="reference internal" href="#pyhtp.ellip.database.EllipDatabase.get_file_num"><code class="docutils literal notranslate"><span class="pre">EllipDatabase.get_file_num()</span></code></a></li>
-<li><a class="reference internal" href="#pyhtp.ellip.database.EllipDatabase.get_fom"><code class="docutils literal notranslate"><span class="pre">EllipDatabase.get_fom()</span></code></a></li>
-<li><a class="reference internal" href="#pyhtp.ellip.database.EllipDatabase.get_len"><code class="docutils literal notranslate"><span class="pre">EllipDatabase.get_len()</span></code></a></li>
-<li><a class="reference internal" href="#pyhtp.ellip.database.EllipDatabase.get_wavelength"><code class="docutils literal notranslate"><span class="pre">EllipDatabase.get_wavelength()</span></code></a></li>
+<li><a class="reference internal" href="#pyhtp.ellip.database.SEDatabase"><code class="docutils literal notranslate"><span class="pre">SEDatabase</span></code></a><ul>
+<li><a class="reference internal" href="#pyhtp.ellip.database.SEDatabase.copy"><code class="docutils literal notranslate"><span class="pre">SEDatabase.copy()</span></code></a></li>
+<li><a class="reference internal" href="#pyhtp.ellip.database.SEDatabase.get_alpha"><code class="docutils literal notranslate"><span class="pre">SEDatabase.get_alpha()</span></code></a></li>
+<li><a class="reference internal" href="#pyhtp.ellip.database.SEDatabase.get_data"><code class="docutils literal notranslate"><span class="pre">SEDatabase.get_data()</span></code></a></li>
+<li><a class="reference internal" href="#pyhtp.ellip.database.SEDatabase.get_file_num"><code class="docutils literal notranslate"><span class="pre">SEDatabase.get_file_num()</span></code></a></li>
+<li><a class="reference internal" href="#pyhtp.ellip.database.SEDatabase.get_fom"><code class="docutils literal notranslate"><span class="pre">SEDatabase.get_fom()</span></code></a></li>
+<li><a class="reference internal" href="#pyhtp.ellip.database.SEDatabase.get_len"><code class="docutils literal notranslate"><span class="pre">SEDatabase.get_len()</span></code></a></li>
+<li><a class="reference internal" href="#pyhtp.ellip.database.SEDatabase.get_wavelength"><code class="docutils literal notranslate"><span class="pre">SEDatabase.get_wavelength()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#pyhtp.ellip.database.tauc_plot"><code class="docutils literal notranslate"><span class="pre">tauc_plot()</span></code></a></li>
@@ -98,19 +98,19 @@
 <span id="pyhtp-ellip-database-module"></span><h2>pyhtp.ellip.database module<a class="headerlink" href="#module-pyhtp.ellip.database" title="Link to this heading"></a></h2>
 <p>Define a class to read file and store ellipsometry data.</p>
 <dl class="py class">
-<dt class="sig sig-object py" id="pyhtp.ellip.database.EllipDatabase">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyhtp.ellip.database.</span></span><span class="sig-name descname"><span class="pre">EllipDatabase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyhtp.typing.html#pyhtp.typing.infotuple.SampleInfo" title="pyhtp.typing.infotuple.SampleInfo"><span class="pre">SampleInfo</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pyhtp.ellip.database.EllipDatabase" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="pyhtp.ellip.database.SEDatabase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pyhtp.ellip.database.</span></span><span class="sig-name descname"><span class="pre">SEDatabase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyhtp.typing.html#pyhtp.typing.infotuple.SampleInfo" title="pyhtp.typing.infotuple.SampleInfo"><span class="pre">SampleInfo</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pyhtp.ellip.database.SEDatabase" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>A class to read file and store ellipsometry data.</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="pyhtp.ellip.database.EllipDatabase.copy">
-<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pyhtp.ellip.database.EllipDatabase.copy" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="pyhtp.ellip.database.SEDatabase.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pyhtp.ellip.database.SEDatabase.copy" title="Link to this definition"></a></dt>
 <dd><p>Return a copy of the class.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="pyhtp.ellip.database.EllipDatabase.get_alpha">
-<span class="sig-name descname"><span class="pre">get_alpha</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wavelength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pyhtp.ellip.database.EllipDatabase.get_alpha" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="pyhtp.ellip.database.SEDatabase.get_alpha">
+<span class="sig-name descname"><span class="pre">get_alpha</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wavelength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pyhtp.ellip.database.SEDatabase.get_alpha" title="Link to this definition"></a></dt>
 <dd><p>Return the absorption coefficient of the sample at a specific wavelength.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -126,8 +126,8 @@
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="pyhtp.ellip.database.EllipDatabase.get_data">
-<span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">param</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'n'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'k'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pyhtp.ellip.database.EllipDatabase.get_data" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="pyhtp.ellip.database.SEDatabase.get_data">
+<span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">param</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'n'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'k'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wavelength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pyhtp.ellip.database.SEDatabase.get_data" title="Link to this definition"></a></dt>
 <dd><p>Return the n/k data of the sample at a specific wavelength.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -146,14 +146,14 @@
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="pyhtp.ellip.database.EllipDatabase.get_file_num">
-<span class="sig-name descname"><span class="pre">get_file_num</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyhtp.ellip.database.EllipDatabase.get_file_num" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="pyhtp.ellip.database.SEDatabase.get_file_num">
+<span class="sig-name descname"><span class="pre">get_file_num</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyhtp.ellip.database.SEDatabase.get_file_num" title="Link to this definition"></a></dt>
 <dd><p>Return the number of files in the database.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="pyhtp.ellip.database.EllipDatabase.get_fom">
-<span class="sig-name descname"><span class="pre">get_fom</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wavelength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pyhtp.ellip.database.EllipDatabase.get_fom" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="pyhtp.ellip.database.SEDatabase.get_fom">
+<span class="sig-name descname"><span class="pre">get_fom</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wavelength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pyhtp.ellip.database.SEDatabase.get_fom" title="Link to this definition"></a></dt>
 <dd><p>Return the figure of merit of the sample at a specific wavelength.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -169,14 +169,14 @@
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="pyhtp.ellip.database.EllipDatabase.get_len">
-<span class="sig-name descname"><span class="pre">get_len</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyhtp.ellip.database.EllipDatabase.get_len" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="pyhtp.ellip.database.SEDatabase.get_len">
+<span class="sig-name descname"><span class="pre">get_len</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#pyhtp.ellip.database.SEDatabase.get_len" title="Link to this definition"></a></dt>
 <dd><p>Return the number of data in the database.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="pyhtp.ellip.database.EllipDatabase.get_wavelength">
-<span class="sig-name descname"><span class="pre">get_wavelength</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pyhtp.ellip.database.EllipDatabase.get_wavelength" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="pyhtp.ellip.database.SEDatabase.get_wavelength">
+<span class="sig-name descname"><span class="pre">get_wavelength</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pyhtp.ellip.database.SEDatabase.get_wavelength" title="Link to this definition"></a></dt>
 <dd><p>Return the wavelength of the data.</p>
 </dd></dl>
 
