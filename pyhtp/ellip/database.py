@@ -136,6 +136,7 @@ class SEDatabase:
         amorphous_data: SEDatabase,
         wavelength: float | list[float] | NDArray[np.float64] | None = None,
         index: int | list[int] | NDArray[np.int_] = -1,
+        fom_type: Literal['-/+', '-/-'] = '-/+'
     ) -> NDArray[np.float64]:
         """Calculate the figure of merit of the sample from two SEDatabase.
 
@@ -157,4 +158,9 @@ class SEDatabase:
         k_cry = crystalline_data.get_property('k', wavelength, index)
         n_amo = amorphous_data.get_property('n', wavelength, index)
         k_amo = amorphous_data.get_property('k', wavelength, index)
-        return np.abs((n_cry - n_amo) / (k_cry + k_amo))
+        if fom_type == '-/+':
+            return np.abs((n_cry - n_amo) / (k_cry + k_amo))
+        elif fom_type == '-/-':
+            return np.abs((n_cry - n_amo) / (k_cry - k_amo))
+        else:
+            raise ValueError('The fom type is invalid.')

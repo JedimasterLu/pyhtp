@@ -5,8 +5,9 @@ Define a class for quaternary phase diagram.
 import numpy as np
 import matplotlib.pyplot as plt
 from numpy.typing import NDArray
+from matplotlib.ticker import StrMethodFormatter
 from matplotlib.figure import Figure
-from matplotlib.colors import to_hex
+from matplotlib.colors import to_hex, to_rgba_array
 from matplotlib.lines import Line2D
 from matplotlib.colors import Normalize
 from matplotlib.collections import PathCollection
@@ -27,7 +28,7 @@ class QuatPlot:
         params (dict): The parameters of the plot.
             - fontfamily: The font family of the labels.
             - axiscolor: The color of the axis.
-            - axistextsize: The size of the axis text.
+            - axislabelsize: The size of the axis text.
             - facecolor: The color of the face.
             - facealpha: The alpha of the face.
             - ticksize: The size of the ticks.
@@ -53,7 +54,7 @@ class QuatPlot:
             **kwargs: Parameters for self.params.
                 - fontfamily: The font family of the labels.
                 - axiscolor: The color of the axis.
-                - axistextsize: The size of the axis text.
+                - axislabelsize: The size of the axis text.
                 - facecolor: The color of the face.
                 - facealpha: The alpha of the face.
                 - ticksize: The size of the ticks.
@@ -86,7 +87,8 @@ class QuatPlot:
             'fontfamily': kwargs.pop('fontfamily', 'DejaVu Sans'),
             'axiscolor': kwargs.pop('axiscolor', 'darkslategray'),
             'axislinewidth': kwargs.pop('axislinewidth', 1),
-            'axistextsize': kwargs.pop('axistextsize', 18),
+            'axislabelsize': kwargs.pop('axislabelsize', 18),
+            'axislabelpad': kwargs.pop('axislabelpad', 0.08),
             'facecolor': kwargs.pop('facecolor', 'tab:blue'),
             'facealpha': kwargs.pop('facealpha', 0.05),
             'ticksize': kwargs.pop('ticksize', 2),
@@ -117,7 +119,7 @@ class QuatPlot:
                 facecolors=self.params['facecolor'],
                 edgecolors=self.params['axiscolor']))
         # Add labels to the vertices
-        pad = 0.08
+        pad = self.params['axislabelpad']
         for i, txt in enumerate(self.axis_label):
             if i == 0:
                 coord = self._vertices[i] + np.array(
@@ -133,7 +135,7 @@ class QuatPlot:
                     [0, 0, pad / 2])
             self.ax.text(
                 coord[0], coord[1], coord[2], txt,
-                size=self.params['axistextsize'],
+                size=self.params['axislabelsize'],
                 color=self.params['axiscolor'],
                 fontfamily=self.params['fontfamily'])
         # Set aspect and lims and axes
@@ -166,7 +168,7 @@ class QuatPlot:
             **kwargs: The parameters to set.
                 - fontfamily: The font family of the labels.
                 - axiscolor: The color of the axis.
-                - axistextsize: The size of the axis text.
+                - axislabelsize: The size of the axis text.
                 - axislinewidth: The width of the axis.
                 - facecolor: The color of the face.
                 - facealpha: The alpha of the face.
@@ -365,7 +367,7 @@ class QuatPlot:
             vlim (tuple[float, float] | float | None, optional):
                 The value limits. Defaults to None. If tuple, it will be the
                 actual value. If float, it will be the percentile.
-                For example, vlim=0.05 means (5%, 95%). Defaults to None.
+                For example, vlim=5 means (5%, 95%). Defaults to None.
             artist_name (str | None, optional): The name of the artist. Defaults to None.
 
         Returns:
@@ -379,20 +381,32 @@ class QuatPlot:
         if color is not None:
             color = np.array(color).flatten()
             assert color.shape[0] == coords.shape[0]
+            # The elements in color should be hex colors
+            # Convert to RGBA, with shape (n, 4)
+            color = to_rgba_array(color)
         elif value is not None:
             if vlim is None:
                 vlim = (np.min(value).astype(float),
                         np.max(value).astype(float))
-            elif isinstance(vlim, float):
+            elif isinstance(vlim, float | int):
                 vlim = (np.percentile(value, vlim).astype(float),
                         np.percentile(value, 100 - vlim).astype(float))
             assert isinstance(vlim, tuple)
             assert len(vlim) == 2
             color = plt.get_cmap(cmap)(Normalize(*vlim)(value))
+        assert isinstance(color, np.ndarray)
+
+        car_coords = self.tet_to_car(coords)
+        side_num = int(np.sqrt(coords.shape[0]))
         artist = self.ax.plot_surface(
-            *self.tet_to_car(coords).T, facecolors=color,
+            X=car_coords[:, 0].reshape(side_num, side_num),
+            Y=car_coords[:, 1].reshape(side_num, side_num),
+            Z=car_coords[:, 2].reshape(side_num, side_num),
+            cmap=cmap, clim=vlim,
+            facecolors=color.reshape(side_num, side_num, 4),
             shade=False, antialiased=True,
             rstride=1, cstride=1)
+
         # Put the handle of the artist into the artists dictionary
         if artist_name is None:
             # Get the number of surface artists
@@ -405,6 +419,8 @@ class QuatPlot:
             self,
             artist: Poly3DCollection | None = None,
             artist_name: str | None = None,
+            tick_number: int = 5,
+            precision: int = 2,
             **kwargs) -> Colorbar:
         """Add colorbar to the quaternary phase diagram.
 
@@ -423,8 +439,7 @@ class QuatPlot:
                 - labelsize: The size of the label.
                 - colors: The color of the label.
                 - labelfontfamily: The font family of the label.
-                Other arguments are passed to the colorbar function
-                and the tick_params function.
+                Other arguments are passed to the tick_params function.
 
         Returns:
             Colorbar: The colorbar artist.
@@ -438,22 +453,35 @@ class QuatPlot:
             artist = self.artists[surface_artists[0]]
         assert isinstance(artist, Poly3DCollection)
         assert isinstance(self.fig, Figure)
+
+        cmap, clim = artist.get_cmap(), artist.get_clim()
+        virtual_artist = plt.cm.ScalarMappable(cmap=cmap, norm=Normalize(*clim))
+        virtual_artist.set_array([])
+
         cbar = self.fig.colorbar(
-            artist, ax=self.ax,
+            virtual_artist, ax=self.ax,
             shrink=kwargs.pop('shrink', 0.5),
-            pad=kwargs.pop('pad', -0.05),
-            **kwargs)
+            pad=kwargs.pop('pad', -0.05))
+        cbar.set_ticks(np.linspace(clim[0], clim[1], tick_number))  # type: ignore
+
+        # Format the tick labels to show specified decimal places
+        if precision is not None:
+            formatter = StrMethodFormatter(f"{{x:.{precision}f}}")
+            cbar.ax.yaxis.set_major_formatter(formatter)
+
         # Set the colorbar properties
         cbar.ax.tick_params(
-            labelsize=kwargs.pop('labelsize', self.params['axistextsize']),
+            labelsize=kwargs.pop('labelsize', self.params['axislabelsize'] - 2),
             colors=kwargs.pop('colors', self.params['axiscolor']),
             labelfontfamily=kwargs.pop('labelfontfamily', self.params['fontfamily']),
             **kwargs)
+
         # Put the handle of the artist into the artists dictionary
         if artist_name is None:
             # Get the number of colorbar artists
             current_colorbar_num = len([i for i in self.artists if 'colorbar' in i])
             artist_name = f'colorbar_{current_colorbar_num}'
+
         self.artists[artist_name] = cbar
         return cbar
 
