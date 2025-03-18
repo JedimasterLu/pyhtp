@@ -77,7 +77,7 @@ class SpectrumInfo(NamedTuple):
         element (list[str]): The elements in the sample.
         temperature (float): The temperature of the SE spectrum.
         index (int): The index of the SE spectrum. Default to 0. The index is used
-            in EllipDatabase to identify the SE spectrum.
+            in SEDatabase to identify the SE spectrum.
     """
     name: str
     wavelength_range: tuple[float, float]

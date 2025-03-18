@@ -14,7 +14,7 @@ from numpy.typing import NDArray
 from ..typing import SpectrumInfo, BandGap, BandGapLegacy
 
 
-class EllipSpectrum:
+class SESpectrum:
     """A class to process a single ellipsometry spectrum.
 
     Attributes:
@@ -32,7 +32,7 @@ class EllipSpectrum:
             k: NDArray[np.float64] | list[float],
             info: SpectrumInfo,
             wavelength: NDArray[np.float64] | list[float] | None = None):
-        """Create an instance of EllipSpectrum.
+        """Create an instance of SESpectrum.
 
         The class does not support import from a file. The refractive index and extinction coefficient
         should be provided.
