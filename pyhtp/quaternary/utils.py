@@ -67,7 +67,7 @@ def _get_coord_from_thickness(
     #         x = 1 / (side_num - 1) * i
     #         y = 1 / (side_num - 1) * j
     #         abs_coord[i * side_num + j] = [x, y]
-    i, j = np.meshgrid(np.arange(side_number), np.arange(side_number), indexing='ij')
+    i, j = np.meshgrid(np.arange(side_number), np.arange(side_number))
     # Normalize the coordinates
     abs_coord = np.stack((i / (side_number - 1),
                           j / (side_number - 1)), axis=-1).reshape(-1, 2)
