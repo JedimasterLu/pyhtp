@@ -442,7 +442,10 @@ class XRDDatabase:
             index: list[int] | None = None,
             cmap: str | Colormap = 'viridis',
             ax: Axes3D | None = None,
-            baseref_index: int = -1) -> None:
+            baseref_index: int = -1,
+            y_range: tuple[float, float] | None = None,
+            interpolate: bool = False,
+            **kwargs) -> None:
         """Plot the diffraction patterns in 3D surface.
 
         Args:
@@ -471,11 +474,25 @@ class XRDDatabase:
         assert ax
         # Convert all the intensity data into a surface
         x = np.array(patterns[0].two_theta)
-        y = np.arange(len(patterns))
+        if y_range is None:
+            y = np.arange(len(patterns))
+        else:
+            y = np.linspace(y_range[0], y_range[1], len(patterns))
         x_value, y_value = np.meshgrid(x, y)
         z_value = self.intensity[index]
+        if interpolate:
+            # Interpolate the data
+            from scipy.interpolate import griddata
+            # Interpolate the x_value, y_value, z_value
+            x_value = np.linspace(x.min(), x.max(), 100)
+            y_value = np.linspace(y.min(), y.max(), 100)
+            x_value, y_value = np.meshgrid(x_value, y_value)
+            z_value = griddata(
+                (self.two_theta[index].flatten(), np.repeat(y, len(x))),
+                self.intensity[index].flatten(),
+                (x_value, y_value), method='cubic')
         # Plot the surface
-        ax.plot_surface(x_value, y_value, z_value, cmap=cmap)
+        ax.plot_surface(x_value, y_value, z_value, cmap=cmap, **kwargs)
         ax.set_box_aspect([4, 3, 1])
 
     def get_peak(
