@@ -266,6 +266,9 @@ class QuatPlot:
             PathCollection: The scatter plot artist.
         """
         coords = np.array(coords)
+        # If coords is a 1D array, reshape it to (1, 4)
+        if coords.ndim == 1:
+            coords = coords.reshape(1, 4)
         # Normalize the coordinates so that the sum of each row is 1
         coords = coords / np.sum(coords, axis=1)[:, None]
         assert isinstance(coords, np.ndarray) and coords.shape[1] == 4
@@ -278,7 +281,7 @@ class QuatPlot:
             if group_color is None:
                 color_of_groups = self._get_colors(len(np.unique(value)), cmap)
                 group_color = dict(zip(np.unique(value), color_of_groups))
-            color = [group_color[i] for i in value]
+            color = [to_hex(group_color[i]) for i in value]
             artist = self.ax.scatter(
                 *self.tet_to_car(coords).T,
                 c=color, s=markersize, marker=marker, picker=picker)

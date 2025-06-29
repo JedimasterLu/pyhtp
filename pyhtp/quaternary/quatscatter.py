@@ -23,7 +23,7 @@ class QuatScatter(QuatPlot):
     """
     def __init__(
             self,
-            value: list[str | int] | NDArray[np.str_ | np.int_],
+            value: list[str] | list[int] | NDArray[np.str_] | NDArray[np.int_],
             axis_label: tuple[str, str, str, str] | None = None,
             database: XRDDatabase | XRFDatabase | None = None,
             coords: NDArray[np.float64] | None = None,
@@ -33,7 +33,7 @@ class QuatScatter(QuatPlot):
         """Initializes the QuatScatter class
 
         Args:
-            value (list[str | int] | NDArray[np.str_ | np.int_]): _description_
+            value (list[str] | list[int] | NDArray[np.str_] | NDArray[np.int_],): _description_
             axis_label (tuple[str, str, str, str] | None, optional):
                 _description_. Defaults to None.
             database (XRDDatabase | XRFDatabase | None, optional):

@@ -111,7 +111,7 @@ class XRFDatabase:
         """
         raw_data = []
         self._vertices = []
-        # Firstly, implort the raw data
+        # Firstly, import the raw data
         for file_path in os.listdir(self._file_dir):
             if not file_path.endswith('.txt'):
                 continue
@@ -252,6 +252,8 @@ class XRFDatabase:
             order (tuple[str, str, str, str] | None, optional):
                 The order of the elements. If None, the order of the elements will be
                 the same as the order of the data files. Defaults to None.
+            normalize (bool, optional): If True, the composition will be normalized,
+                so that the sum of the composition is 1. Defaults to True.
 
         Returns:
             NDArray: The composition of the XRF data. The shape is (x.shape[0], 4).
@@ -264,7 +266,7 @@ class XRFDatabase:
             column = column.astype(int)
             column[column >= data.shape[1]] = data.shape[1] - 1
             column[column <= 0] = 0
-            row = y * data.shape[0]
+            row = (1 - y) * data.shape[0]
             row = row.astype(int)
             row[row >= data.shape[0]] = data.shape[0] - 1
             row[row <= 0] = 0
@@ -292,13 +294,16 @@ class XRFDatabase:
         Returns:
             NDArray: The composition of the XRF data. The shape is (side_number**2, 4).
         """
-        i, j = np.meshgrid(np.arange(side_number), np.arange(side_number), indexing='ij')
+        # 修改网格生成时的索引顺序，确保与raw数据保持一致
+        i, j = np.meshgrid(np.arange(side_number), np.arange(side_number))
         # Normalize the coordinates
         abs_coord = np.stack(
             (i / (side_number - 1), j / (side_number - 1)), axis=-1).reshape(-1, 2)
         x = abs_coord[:, 0]
         y = abs_coord[:, 1]
-        return self.get_composition(x, y, order)
+        comp = self.get_composition(x, y, order)
+        # 确保reshape后的数据方向与raw数据一致
+        return comp
 
     def get_composition_df(self, side_number: int) -> pd.DataFrame:
         """Get the composition of the XRF data into a pd.DataFrame.
@@ -355,11 +360,11 @@ class XRFDatabase:
             data = [self.data[self.elements.index(e)] for e in element]
         elif data_type == 'composition':
             for e in element:
-                side_number = kwargs.get('side_number', 30)
+                side_number = kwargs.get('side_number', 100)
                 composition = self.get_composition_map(side_number)
                 data.append(
-                    composition[:, self.elements.index(e)].reshape(
-                        side_number, side_number))
+                    np.flipud(composition[:, self.elements.index(e)].reshape(
+                        side_number, side_number)))
         assert isinstance(data, list)
         if vlim is None:
             vlim = (min(data.min() for data in data),
@@ -372,10 +377,14 @@ class XRFDatabase:
             im = None
             if plot_type == 'imshow':
                 im = a.imshow(
-                    d, origin='lower', vmin=temp_vlim[0], vmax=temp_vlim[1], **kwargs)
+                    d, origin='upper', vmin=temp_vlim[0], vmax=temp_vlim[1], **kwargs)
             elif plot_type == 'contourf':
                 im = a.contourf(
-                    d, origin='lower', vmin=temp_vlim[0], vmax=temp_vlim[1], **kwargs)
+                    d, origin='upper', vmin=temp_vlim[0], vmax=temp_vlim[1], **kwargs)
+                a.contour(
+                    d, origin='upper', vmin=temp_vlim[0], vmax=temp_vlim[1],
+                    linewidths=1, levels=kwargs.get('levels', None),
+                    colors='black', alpha=0.6)
             a.set_title(e)
             a.axis('off')
             cbar = plt.colorbar(im, ax=a, fraction=0.045, pad=0.04)
